@@ -7,8 +7,8 @@ export interface Draft {
   id: string;
   answers: Answers;
   startedAt: string | null;
-  /** -1 = halaman pembuka, 0..n-1 = langkah, n = ringkasan */
-  step: number;
+  /** Kunci layar terakhir yang dibuka, mis. "q:2.3", "s:kondisi", "review". */
+  screen?: string;
   savedAt: string;
 }
 

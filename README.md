@@ -9,15 +9,27 @@ dipasang di hosting Hostinger biasa tanpa Node.js.
 
 ## Fitur
 
-- Satu bagian per halaman dengan animasi transisi, ilustrasi alat berat, bilah kemajuan bergambar truk,
-  penanda hijau untuk pertanyaan yang sudah terjawab, pesan penyemangat, dan konfeti saat terkirim.
+- **Satu pertanyaan per layar** (pola template Typeform): judul besar, pilihan berhuruf A/B/C yang bisa
+  dipilih dengan keyboard, tombol **OK** + "tekan Enter ↵", pindah otomatis setelah memilih jawaban tunggal,
+  tombol ▲▼ di kanan bawah, dan bilah kemajuan di atas.
+- Layar pembuka dan pembuka tiap bagian bertata letak terbelah (teks + ilustrasi), dengan peta bagian
+  dan kalimat penghubung antarbagian.
+- Animasi: transisi geser vertikal antarlayar, isi layar muncul berurutan, kedipan saat memilih,
+  getar saat jawaban belum lengkap, warna latar berganti per bagian, konfeti saat terkirim.
+  Semua gerak mati otomatis bila perangkat diatur "kurangi gerakan".
+- Semua pertanyaan wajib diisi. Email boleh dari domain apa pun (kantor, Gmail, Outlook, dll.).
 - Logika lompat: 3.1 → 3.2; 3.7 "hanya subkon" → lewati 3.8–3.9; 4.1 "Tidak" → lewati 4.2 dan 5.3;
   4.8 "Tidak ada" → lewati 4.9–4.10.
 - 2.6 Alat 1–3: pilih kelompok alat (kartu bergambar), lalu centang tipe alat dari kelompok itu saja.
 - 3.2 dan 3.6 berupa peringkat: setiap nilai 1–5 hanya boleh dipakai satu kali (3.6 = top 5 dari 7 aspek).
-- Tabel isian (2.6, 4.4) berupa kartu yang barisnya bisa ditambah.
-- Draf tersimpan otomatis di browser; ada halaman ringkasan sebelum kirim.
+- Draf tersimpan otomatis di browser; ada halaman ringkasan dengan tombol "Ubah" per jawaban.
 - Halaman admin `/admin/` menampilkan jumlah respons dan tombol unduh CSV untuk Excel.
+
+## Logo
+
+Letakkan file logo di `public/brand/` sebelum build (atau langsung di folder `brand/` di hosting):
+`logo-wki.png` (logo utama) dan `logo-danantara.png` (logo pendamping). Selama file belum ada,
+situs menampilkan ikon pengganti.
 
 ## Struktur
 

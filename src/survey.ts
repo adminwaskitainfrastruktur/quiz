@@ -127,10 +127,11 @@ export const SURVEY: Survey = {
       title: 'Profil responden',
       desc: 'Membantu kami membaca jawaban sesuai peran Bapak/Ibu.',
       questions: [
-        { num: '1.1', type: 'text', title: 'Nama', short: 'Nama', placeholder: 'Boleh dikosongkan', autocomplete: 'name' },
+        { num: '1.1', type: 'text', title: 'Nama lengkap', short: 'Nama', required: true, placeholder: 'Contoh: Budi Santoso', autocomplete: 'name' },
         {
           num: '1.2', type: 'text', format: 'email', required: true,
           title: 'Alamat email', short: 'Email',
+          hint: 'Boleh email kantor maupun pribadi, mis. @waskita.co.id, @gmail.com, atau @outlook.com.',
           placeholder: 'nama@contoh.co.id', autocomplete: 'email',
         },
         {
@@ -230,7 +231,7 @@ export const SURVEY: Survey = {
           itemLabel: 'Alat',
           initialRows: 1, maxRows: 3, minFilled: 1,
           optOut: 'Proyek saya tidak menyewa alat dari vendor eksternal',
-          example: 'a. Earthworks Equipment · b. Excavator · 20 T · Rp45.000.000 per bulan · termasuk operator · tidak termasuk BBM',
+          example: 'a. Earthworks Equipment · b. Excavator · kapasitas 20 T · Rp45.000.000 per bulan · termasuk operator · tidak termasuk BBM',
           fields: [
             {
               id: 'kategori', type: 'radio', wide: true, column: 'Kelompok alat',
@@ -244,7 +245,7 @@ export const SURVEY: Survey = {
               optionsBy: Object.fromEntries(KELOMPOK_ALAT.map((k) => [k.label, k.types])),
               other: 'Sebutkan tipe alat lainnya',
             },
-            { id: 'kapasitas', label: 'Kapasitas/spesifikasi', type: 'text', placeholder: 'Contoh: 20 T', optional: true },
+            { id: 'kapasitas', label: 'Kapasitas/spesifikasi', type: 'text', placeholder: 'Contoh: 20 T' },
             { id: 'tarif', label: 'Tarif (Rp)', type: 'currency', placeholder: '45.000.000' },
             { id: 'satuan', label: 'Satuan', type: 'select', options: ['per jam', 'per hari', 'per bulan'] },
             { id: 'operator', label: 'Termasuk operator?', type: 'yesno' },
@@ -252,11 +253,13 @@ export const SURVEY: Survey = {
           ],
         },
         {
-          num: '2.7', type: 'textarea',
-          title: 'Alat lainnya: adakah alat lain di luar alat di atas yang sering Anda sewa dari vendor eksternal?',
+          num: '2.7', type: 'radio', required: true,
+          title: 'Adakah alat lain di luar alat di atas yang sering Anda sewa dari vendor eksternal?',
           short: 'Alat lain di luar 3 alat',
-          hint: 'Tuliskan jenis alatnya, atau saran Bapak/Ibu terkait sewa alat.',
-          placeholder: 'Contoh: concrete pump 36 m, sekitar Rp60 juta per bulan',
+          options: [
+            { label: 'Ya, ada', input: 'Sebutkan jenis alatnya, atau tulis saran Anda terkait sewa alat' },
+            'Tidak ada',
+          ],
         },
       ],
     },
@@ -439,7 +442,7 @@ export const SURVEY: Survey = {
           ],
         },
         {
-          num: '4.5', type: 'checkbox', max: 3,
+          num: '4.5', type: 'checkbox', required: true, max: 3,
           title: 'Merk alat berat yang paling Anda sukai',
           short: 'Merk alat berat favorit',
           hint: 'Pilih maksimal 3.',
@@ -449,7 +452,7 @@ export const SURVEY: Survey = {
           ],
         },
         {
-          num: '4.6', type: 'checkbox', max: 3,
+          num: '4.6', type: 'checkbox', required: true, max: 3,
           title: 'Merk kendaraan pendukung yang paling Anda sukai',
           short: 'Merk kendaraan pendukung favorit',
           hint: 'Pilih maksimal 3.',
@@ -500,14 +503,14 @@ export const SURVEY: Survey = {
           ],
         },
         {
-          num: '4.9', type: 'radio',
+          num: '4.9', type: 'radio', required: true,
           showIf: (a) => !dicentang(a, '4.8', 'Tidak ada'),
           title: 'Perkiraan nilai paket subkon yang bisa diberikan ke WKI pada 2027',
           short: 'Nilai paket subkon 2027',
           options: ['< Rp10 miliar', 'Rp10–50 miliar', '> Rp50–100 miliar', '> Rp100 miliar', 'Belum dapat diperkirakan'],
         },
         {
-          num: '4.10', type: 'radio',
+          num: '4.10', type: 'radio', required: true,
           showIf: (a) => !dicentang(a, '4.8', 'Tidak ada'),
           title: 'Apakah Anda bersedia melibatkan WKI sejak tahap tender (dukungan penyusunan harga dan metode kerja)?',
           short: 'Melibatkan WKI sejak tender',

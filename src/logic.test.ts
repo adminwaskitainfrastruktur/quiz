@@ -37,15 +37,19 @@ describe('struktur kuesioner', () => {
 });
 
 describe('validasi', () => {
-  it('wajib diisi vs opsional', () => {
+  it('semua pertanyaan wajib diisi (tidak ada yang opsional)', () => {
+    expect(ALL.filter((q) => !q.required).map((q) => q.num)).toEqual([]);
+    for (const q of ALL) if (q.type === 'repeater') expect(q.fields.filter((f) => f.optional)).toEqual([]);
+    expect(validate(Q('1.1'), {})?.message).toMatch(/wajib/);
     expect(validate(Q('1.2'), {})?.message).toMatch(/wajib/);
-    expect(validate(Q('1.1'), {})).toBeNull();
   });
 
   it('format email', () => {
     expect(validate(Q('1.2'), { '1.2': 'budi' })?.message).toMatch(/email/);
     expect(validate(Q('1.2'), { '1.2': 'budi@waskita' })?.message).toMatch(/email/);
-    expect(validate(Q('1.2'), { '1.2': ' budi@waskita.co.id ' })).toBeNull();
+    for (const ok of [' budi@waskita.co.id ', 'budi.s@gmail.com', 'budi@outlook.com', 'b_santoso@yahoo.co.id']) {
+      expect(validate(Q('1.2'), { '1.2': ok })).toBeNull();
+    }
   });
 
   it('dropdown jabatan dengan "Lainnya" harus diisi', () => {
@@ -68,10 +72,10 @@ describe('validasi', () => {
 
   it('tabel isian: baris setengah terisi ditolak, opt-out diterima', () => {
     const half: Answers = { '2.6': { rows: [{ kategori: 'Earthworks Equipment' }] } };
-    expect(validate(Q('2.6'), half)?.cells?.[0]).toEqual(['tipe', 'tarif', 'satuan', 'operator', 'bbm']);
+    expect(validate(Q('2.6'), half)?.cells?.[0]).toEqual(['tipe', 'kapasitas', 'tarif', 'satuan', 'operator', 'bbm']);
     expect(validate(Q('2.6'), { '2.6': { rows: [{}] } })?.message).toMatch(/minimal 1/);
     expect(validate(Q('2.6'), { '2.6': { rows: [{}], optOut: true } })).toBeNull();
-    const full = { kategori: 'Earthworks Equipment', tipe: ['Excavator'], tarif: '45000000', satuan: 'per bulan', operator: 'Ya', bbm: 'Tidak' };
+    const full = { kategori: 'Earthworks Equipment', tipe: ['Excavator'], kapasitas: '20 T', tarif: '45000000', satuan: 'per bulan', operator: 'Ya', bbm: 'Tidak' };
     expect(validate(Q('2.6'), { '2.6': { rows: [full, {}] } })).toBeNull();
   });
 
@@ -157,7 +161,7 @@ describe('percabangan 2.6 (kelompok → tipe alat)', () => {
   });
 
   it('tipe "Lainnya" wajib disebutkan dan ikut terkirim', () => {
-    const row = { kategori: 'Others Equipment', tipe: ['Pompa', 'Lainnya'], tarif: '1000000', satuan: 'per hari', operator: 'Tidak', bbm: 'Tidak' };
+    const row = { kategori: 'Others Equipment', tipe: ['Pompa', 'Lainnya'], kapasitas: '4 inch', tarif: '1000000', satuan: 'per hari', operator: 'Tidak', bbm: 'Tidak' };
     expect(validate(Q('2.6'), { '2.6': { rows: [row] } })?.cells?.[0]).toEqual(['tipe']);
     const ok: Answers = { '2.6': { rows: [{ ...row, tipe__lainnya: 'Vibrator beton' }] } };
     expect(validate(Q('2.6'), ok)).toBeNull();
@@ -165,7 +169,7 @@ describe('percabangan 2.6 (kelompok → tipe alat)', () => {
     expect(p.tables['2.6 Tarif vendor eksternal'][0]).toMatchObject({
       'Kelompok alat': 'Others Equipment',
       'Tipe alat': 'Pompa; Lainnya: Vibrator beton',
-      'Kapasitas/spesifikasi': null,
+      'Kapasitas/spesifikasi': '4 inch',
     });
   });
 });

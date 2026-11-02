@@ -10,6 +10,9 @@ import type {
   RepeaterQ, Row, ScaleQ, TextQ,
 } from '../types';
 
+/** Huruf pintasan keyboard untuk opsi ke-i (A, B, C, …). */
+export const keyOf = (i: number) => String.fromCharCode(65 + i);
+
 const digits = (s: string, max: number) => s.replace(/\D/g, '').replace(/^0+(?=\d)/, '').slice(0, max);
 
 // ── Isian teks ───────────────────────────────────────────────────
@@ -58,19 +61,20 @@ export function RadioGroup({ q, value, onChange, labelledBy }: {
   }
   return (
     <div className="choices" role="radiogroup" aria-labelledby={labelledBy}>
-      {q.options.map((o) => {
+      {q.options.map((o, i) => {
         const label = optLabel(o);
         const checked = value?.value === label;
         const extra = optInput(o);
         return (
-          <div className={`choice${checked ? ' is-on' : ''}`} key={label}>
+          <div className={`choice${checked ? ' is-on' : ''}`} key={label} style={{ ['--i' as string]: i }}>
             <label className="choice-row">
               <input
                 type="radio" name={name} checked={checked}
                 onChange={() => onChange({ value: label, extra: value?.extra })}
               />
-              <span className="mark mark-radio" aria-hidden="true" />
+              <span className="key" aria-hidden="true">{keyOf(i)}</span>
               <span className="choice-text">{label}</span>
+              <span className="tick" aria-hidden="true" />
             </label>
             {extra && checked && (
               <input
@@ -107,17 +111,18 @@ export function CheckboxGroup({ q, value, onChange, labelledBy }: {
           {values.length} dari maks. {q.max} dipilih
         </p>
       )}
-      {q.options.map((o) => {
+      {q.options.map((o, i) => {
         const label = optLabel(o);
         const checked = values.includes(label);
         const extra = optInput(o);
         const disabled = !checked && full && !exclusive.includes(label);
         return (
-          <div className={`choice${checked ? ' is-on' : ''}${disabled ? ' is-off' : ''}`} key={label}>
+          <div className={`choice${checked ? ' is-on' : ''}${disabled ? ' is-off' : ''}`} key={label} style={{ ['--i' as string]: i }}>
             <label className="choice-row">
               <input type="checkbox" checked={checked} disabled={disabled} onChange={(e) => toggle(label, e.target.checked)} />
-              <span className="mark mark-check" aria-hidden="true" />
+              <span className="key" aria-hidden="true">{keyOf(i)}</span>
               <span className="choice-text">{label}</span>
+              <span className="tick" aria-hidden="true" />
             </label>
             {extra && checked && (
               <input
