@@ -1,6 +1,6 @@
 // Logika murni (tanpa React): visibilitas, validasi, dan penyusunan data kirim.
 import type {
-  AllocationQ, Answer, Answers, ChoiceAnswer, Field, MatrixRow, MultiAnswer,
+  AllocationQ, Answer, Answers, ChoiceAnswer, Field, MatrixQ, MatrixRow, MultiAnswer,
   Option, Question, RepeaterAnswer, RepeaterQ, Row, Survey,
 } from './types';
 
@@ -37,7 +37,20 @@ export interface Issue {
   cells?: Record<number, string[]>;
 }
 
-const blank = (v: unknown) => v === undefined || v === null || (typeof v === 'string' && v.trim() === '');
+const blank = (v: unknown) =>
+  v === undefined || v === null || (typeof v === 'string' && v.trim() === '') || (Array.isArray(v) && v.length === 0);
+
+/** Kunci isian "Lainnya" untuk kolom 'checks'. */
+export const otherKey = (f: Field) => `${f.id}__lainnya`;
+export const LAINNYA = 'Lainnya';
+
+/** Opsi kolom 'checks' sesuai jawaban kolom induknya (kosong bila induk belum dipilih). */
+export function fieldOptions(f: Field, r: Row): string[] {
+  if (!f.dependsOn || !f.optionsBy) return f.options ?? [];
+  const parent = r[f.dependsOn];
+  const opts = typeof parent === 'string' ? f.optionsBy[parent] ?? [] : [];
+  return parent && f.other ? [...opts, LAINNYA] : opts;
+}
 
 function extraIssue(opts: Option[], chosen: string[], extra: Record<string, string> | undefined): Issue | null {
   for (const o of opts) {
@@ -49,8 +62,14 @@ function extraIssue(opts: Option[], chosen: string[], extra: Record<string, stri
   return null;
 }
 
-export function fieldIssue(f: Field, v: string | undefined): string | null {
-  if (blank(v)) return 'wajib';
+export function fieldIssue(f: Field, v: string | string[] | undefined, r: Row = {}): string | null {
+  if (blank(v)) return f.optional ? null : 'wajib';
+  if (f.type === 'checks') {
+    const list = Array.isArray(v) ? v : [];
+    if (list.includes(LAINNYA) && blank(r[otherKey(f)])) return 'isi tipe lainnya';
+    return null;
+  }
+  if (Array.isArray(v)) return 'tidak valid';
   if (f.type === 'int') {
     const n = Number(v);
     if (!Number.isInteger(n)) return 'harus angka bulat';
@@ -64,6 +83,8 @@ export function fieldIssue(f: Field, v: string | undefined): string | null {
 
 export const rowIsEmpty = (q: RepeaterQ, r: Row) => q.fields.every((f) => blank(r[f.id]));
 
+const str = (v: string | string[] | undefined) => (typeof v === 'string' ? v : undefined);
+
 export function validate(q: Question, a: Answers): Issue | null {
   if (!isVisible(q, a)) return null;
   const v = a[q.num];
@@ -71,7 +92,11 @@ export function validate(q: Question, a: Answers): Issue | null {
   switch (q.type) {
     case 'text':
     case 'textarea':
-      return q.required && blank(v) ? { message: 'Pertanyaan ini wajib diisi.' } : null;
+      if (blank(v)) return q.required ? { message: 'Pertanyaan ini wajib diisi.' } : null;
+      if (q.format === 'email' && !EMAIL.test(String(v).trim())) {
+        return { message: 'Periksa kembali alamat email, contoh: nama@contoh.co.id.' };
+      }
+      return null;
 
     case 'radio': {
       const ans = v as ChoiceAnswer | undefined;
@@ -92,6 +117,7 @@ export function validate(q: Question, a: Answers): Issue | null {
 
     case 'matrix': {
       const ans = (v ?? {}) as Record<string, number>;
+      if (q.unique) return uniqueIssue(q, ans);
       const missing = q.rows.map((_, i) => i).filter((i) => typeof ans[i] !== 'number');
       if (!q.required || missing.length === 0) return null;
       return {
@@ -120,7 +146,7 @@ export function validate(q: Question, a: Answers): Issue | null {
       let complete = 0;
       ans.rows.forEach((r, i) => {
         if (rowIsEmpty(q, r)) return;
-        const bad = q.fields.filter((f) => fieldIssue(f, r[f.id])).map((f) => f.id);
+        const bad = q.fields.filter((f) => fieldIssue(f, r[f.id], r)).map((f) => f.id);
         if (bad.length) cells[i] = bad;
         else complete++;
       });
@@ -146,6 +172,26 @@ export function validate(q: Question, a: Answers): Issue | null {
   }
 }
 
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+/** Matriks peringkat: setiap nilai dipakai sekali; bila wajib, semua nilai harus terpakai. */
+function uniqueIssue(q: MatrixQ, ans: Record<string, number>): Issue | null {
+  const used = q.rows.map((_, i) => ans[i]).filter((x): x is number => typeof x === 'number');
+  if (new Set(used).size !== used.length) return { message: 'Setiap nilai hanya boleh dipakai satu kali.' };
+  if (!q.required) return null;
+  const unusedVals = q.labels.map((_, i) => i + 1).filter((n) => !used.includes(n));
+  if (!unusedVals.length) return null;
+  const rows = q.rows.length <= q.labels.length
+    ? q.rows.map((_, i) => i).filter((i) => typeof ans[i] !== 'number')
+    : undefined;
+  return {
+    message: used.length === 0
+      ? `Beri nilai 1–${q.labels.length}, masing-masing satu kali.`
+      : `Nilai yang belum dipakai: ${unusedVals.join(', ')}.`,
+    rows,
+  };
+}
+
 export function allocationTotal(q: AllocationQ, ans: Record<string, string>) {
   return q.rows.reduce((s, _, i) => s + (Number(ans[i]) || 0), 0);
 }
@@ -167,8 +213,12 @@ function withExtra(label: string, opts: Option[], extra?: Record<string, string>
   return e ? `${label}: ${e}` : label;
 }
 
-export function fieldText(f: Field, v: string | undefined): string {
+export function fieldText(f: Field, v: string | string[] | undefined, r: Row = {}, sep = ', '): string {
   if (blank(v)) return '';
+  if (Array.isArray(v)) {
+    const other = str(r[otherKey(f)])?.trim();
+    return v.map((x) => (x === LAINNYA && other ? `${LAINNYA}: ${other}` : x)).join(sep);
+  }
   switch (f.type) {
     case 'currency': return `Rp${formatRupiah(v!)}`;
     case 'month': return formatMonth(v!);
@@ -203,6 +253,14 @@ export function answerText(q: Question, a: Answers): string | string[] | null {
     case 'matrix': {
       const ans = (v ?? {}) as Record<string, number>;
       if (!Object.keys(ans).length) return null;
+      if (q.unique) {
+        // Urutkan dari nilai tertinggi; baris tanpa nilai tidak ditampilkan
+        return q.rows
+          .map((r, i) => ({ label: rowOf(r).label, v: ans[i] }))
+          .filter((x) => typeof x.v === 'number')
+          .sort((x, y) => y.v - x.v)
+          .map((x) => `${x.v} — ${x.label}`);
+      }
       return q.rows.map((r, i) => `${rowOf(r).label}: ${typeof ans[i] === 'number' ? `${ans[i]} — ${q.labels[ans[i] - 1]}` : '–'}`);
     }
     case 'allocation': {
@@ -215,7 +273,7 @@ export function answerText(q: Question, a: Answers): string | string[] | null {
       if (ans?.optOut && q.optOut) return q.optOut;
       const rows = repeaterRows(q, ans);
       if (!rows.length) return null;
-      return rows.map((r) => q.fields.map((f) => fieldText(f, r[f.id])).filter(Boolean).join(' · '));
+      return rows.map((r) => q.fields.map((f) => fieldText(f, r[f.id], r)).filter(Boolean).join(' · '));
     }
   }
 }
@@ -269,9 +327,11 @@ function flatten(q: Question, a: Answers, out: Record<string, Cell>, tables: Pay
       tables[`${q.num} ${q.tableName}`] = rows.map((r) =>
         Object.fromEntries(q.fields.map((f): [string, Cell] => {
           const x = r[f.id];
-          if (blank(x)) return [f.label, null];
-          if (f.type === 'int' || f.type === 'currency') return [f.label, Number(x)];
-          return [f.label, x!];
+          const col = f.column ?? f.label;
+          if (blank(x)) return [col, null];
+          if (f.type === 'int' || f.type === 'currency') return [col, Number(x)];
+          if (Array.isArray(x)) return [col, fieldText(f, x, r, '; ')];
+          return [col, x as string];
         })),
       );
       return;

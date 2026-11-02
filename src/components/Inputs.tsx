@@ -1,8 +1,10 @@
 // Komponen isian untuk setiap tipe pertanyaan.
 import { useId } from 'react';
 import {
-  allocationTotal, emptyRepeater, formatRupiah, Issue, MONTH_NAMES, optInput, optLabel, rowOf,
+  allocationTotal, emptyRepeater, fieldOptions, formatRupiah, Issue, LAINNYA, MONTH_NAMES, optInput, optLabel,
+  otherKey, rowOf,
 } from '../logic';
+import { EquipmentArt } from './Art';
 import type {
   AllocationQ, ChoiceAnswer, CheckboxQ, Field, MatrixQ, MultiAnswer, RadioQ, RepeaterAnswer,
   RepeaterQ, Row, ScaleQ, TextQ,
@@ -24,7 +26,8 @@ export function TextInput({ q, value, onChange, labelledBy }: {
   };
   return q.type === 'textarea'
     ? <textarea {...common} rows={4} maxLength={4000} />
-    : <input {...common} type="text" maxLength={300} autoComplete={q.autocomplete ?? 'off'} />;
+    : <input {...common} type={q.format === 'email' ? 'email' : 'text'} inputMode={q.format === 'email' ? 'email' : undefined}
+        maxLength={300} autoComplete={q.autocomplete ?? 'off'} spellCheck={q.format === 'email' ? false : undefined} />;
 }
 
 // ── Pilih satu / pilih beberapa ─────────────────────────────────
@@ -32,6 +35,27 @@ export function RadioGroup({ q, value, onChange, labelledBy }: {
   q: RadioQ; value: ChoiceAnswer | undefined; onChange: (v: ChoiceAnswer) => void; labelledBy: string;
 }) {
   const name = useId();
+  if (q.dropdown) {
+    const chosen = q.options.find((o) => optLabel(o) === value?.value);
+    const extra = chosen && optInput(chosen);
+    return (
+      <div className="dropdown">
+        <select className="input select" aria-labelledby={labelledBy} aria-required={q.required || undefined}
+          value={value?.value ?? ''} onChange={(e) => onChange({ value: e.target.value, extra: value?.extra })}>
+          <option value="" disabled>Pilih…</option>
+          {q.options.map((o) => <option key={optLabel(o)}>{optLabel(o)}</option>)}
+        </select>
+        {extra && (
+          <input
+            className="input choice-extra-dd" type="text" maxLength={200} autoFocus
+            placeholder={extra} aria-label={`${value!.value}: ${extra}`}
+            value={value?.extra?.[value!.value] ?? ''}
+            onChange={(e) => onChange({ value: value!.value, extra: { ...value?.extra, [value!.value]: e.target.value } })}
+          />
+        )}
+      </div>
+    );
+  }
   return (
     <div className="choices" role="radiogroup" aria-labelledby={labelledBy}>
       {q.options.map((o) => {
@@ -153,8 +177,28 @@ export function Matrix({ q, value, onChange, labelledBy, issue }: {
   const base = useId();
   const ans = value ?? {};
   const missing = new Set(issue?.rows ?? []);
+  // Peringkat: nilai yang dipilih dipindahkan dari baris lain yang memakainya
+  const pick = (ri: number, val: number) => {
+    const next: Record<string, number> = { ...ans, [ri]: val };
+    if (q.unique) {
+      for (const k of Object.keys(next)) if (Number(k) !== ri && next[k] === val) delete next[k];
+    }
+    onChange(next);
+  };
+  const clear = (ri: number) => {
+    const next = { ...ans };
+    delete next[ri];
+    onChange(next);
+  };
+  const usedBy = new Map<number, number>();
+  if (q.unique) for (const [k, v] of Object.entries(ans)) if (typeof v === 'number') usedBy.set(v, Number(k));
   return (
-    <div className="matrix" role="group" aria-labelledby={labelledBy}>
+    <div className={`matrix${q.unique ? ' matrix-unique' : ''}`} role="group" aria-labelledby={labelledBy}>
+      {q.unique && (
+        <p className={`counter${usedBy.size === q.labels.length ? ' is-done' : ''}`} aria-live="polite">
+          {usedBy.size} dari {q.labels.length} nilai terpakai
+        </p>
+      )}
       <ol className="legend" aria-label="Keterangan skala">
         {q.labels.map((l, i) => <li key={l}><b>{i + 1}</b> {l}</li>)}
       </ol>
@@ -168,15 +212,19 @@ export function Matrix({ q, value, onChange, labelledBy, issue }: {
         const v = ans[ri];
         return (
           <div className={`matrix-row${missing.has(ri) ? ' is-missing' : ''}${typeof v === 'number' ? ' is-done' : ''}`} key={row.label}>
-            <div className="matrix-label" id={id}>
-              <span>{row.label}</span>
+            <div className="matrix-label">
+              <span id={id}>{row.label}</span>
               {row.hint && <small>{row.hint}</small>}
+              {q.unique && typeof v === 'number' && (
+                <button type="button" className="link-btn matrix-clear" onClick={() => clear(ri)}
+                  aria-label={`Kosongkan nilai untuk ${row.label}`}>Kosongkan</button>
+              )}
             </div>
             <div className="matrix-pills" role="radiogroup" aria-labelledby={id}>
               {q.labels.map((l, i) => (
-                <label className={`pill${v === i + 1 ? ' is-on' : ''}`} key={l}>
+                <label className={`pill${v === i + 1 ? ' is-on' : ''}${q.unique && v !== i + 1 && usedBy.has(i + 1) ? ' is-taken' : ''}`} key={l}>
                   <input type="radio" name={id} checked={v === i + 1} aria-label={`${i + 1} – ${l}`}
-                    onChange={() => onChange({ ...ans, [ri]: i + 1 })} />
+                    onChange={() => pick(ri, i + 1)} />
                   <span className="pill-num">{i + 1}</span>
                 </label>
               ))}
@@ -224,34 +272,77 @@ export function Allocation({ q, value, onChange, labelledBy }: {
 }
 
 // ── Tabel isian berulang ─────────────────────────────────────────
-function FieldInput({ f, value, onChange, id, invalid }: {
-  f: Field; value: string | undefined; onChange: (v: string) => void; id: string; invalid: boolean;
+function FieldInput({ f, row, onChange, id, invalid }: {
+  f: Field; row: Row; onChange: (patch: Row) => void; id: string; invalid: boolean;
 }) {
-  const v = value ?? '';
+  const raw = row[f.id];
+  const v = typeof raw === 'string' ? raw : '';
   const inv = invalid || undefined;
+  const set = (x: string) => onChange({ [f.id]: x });
   switch (f.type) {
+    case 'radio':
+      return (
+        <div className="tiles" role="radiogroup" aria-labelledby={`${id}-l`}>
+          {f.choices!.map((c, k) => (
+            <label key={c.label} className={`tile${v === c.label ? ' is-on' : ''}`}>
+              <input type="radio" name={id} checked={v === c.label} onChange={() => set(c.label)} />
+              <span className="tile-art" aria-hidden="true"><EquipmentArt index={k} /></span>
+              <span className="tile-text">
+                <b>{c.label}</b>
+                {c.hint && <small>{c.hint}</small>}
+              </span>
+              <span className="tile-check" aria-hidden="true" />
+            </label>
+          ))}
+        </div>
+      );
+    case 'checks': {
+      const opts = fieldOptions(f, row);
+      const list = Array.isArray(raw) ? raw : [];
+      if (!opts.length) {
+        return <p className="hint-box" id={id}>Pilih kelompok alat di pertanyaan a terlebih dahulu.</p>;
+      }
+      const toggle = (o: string) => onChange({ [f.id]: list.includes(o) ? list.filter((x) => x !== o) : [...list, o] });
+      return (
+        <div className="chips-pick" role="group" aria-labelledby={`${id}-l`} key={String(row[f.dependsOn!])}>
+          {opts.map((o, k) => (
+            <label key={o} className={`chip${list.includes(o) ? ' is-on' : ''}`} style={{ ['--i' as string]: k }}>
+              <input type="checkbox" checked={list.includes(o)} onChange={() => toggle(o)} />
+              <span className="chip-mark" aria-hidden="true" />
+              {o}
+            </label>
+          ))}
+          {list.includes(LAINNYA) && (
+            <input className="input chip-other" type="text" maxLength={200} autoFocus
+              placeholder={f.other} aria-label={`Lainnya: ${f.other}`} aria-invalid={inv}
+              value={typeof row[otherKey(f)] === 'string' ? (row[otherKey(f)] as string) : ''}
+              onChange={(e) => onChange({ [otherKey(f)]: e.target.value })} />
+          )}
+        </div>
+      );
+    }
     case 'text':
       return <input id={id} className="input" type="text" maxLength={200} placeholder={f.placeholder} value={v}
-        aria-invalid={inv} onChange={(e) => onChange(e.target.value)} />;
+        aria-invalid={inv} onChange={(e) => set(e.target.value)} />;
     case 'currency':
       return (
         <div className="affix affix-pre">
           <span className="affix-text">Rp</span>
           <input id={id} className="input input-num" type="text" inputMode="numeric" placeholder={f.placeholder}
-            value={formatRupiah(v)} aria-invalid={inv} onChange={(e) => onChange(digits(e.target.value, 15))} />
+            value={formatRupiah(v)} aria-invalid={inv} onChange={(e) => set(digits(e.target.value, 15))} />
         </div>
       );
     case 'int':
       return (
         <div className="affix">
           <input id={id} className="input input-num" type="text" inputMode="numeric" value={v} aria-invalid={inv}
-            onChange={(e) => onChange(digits(e.target.value, 4))} />
+            onChange={(e) => set(digits(e.target.value, 4))} />
           {f.suffix && <span className="affix-text">{f.suffix}</span>}
         </div>
       );
     case 'select':
       return (
-        <select id={id} className="input select" value={v} aria-invalid={inv} onChange={(e) => onChange(e.target.value)}>
+        <select id={id} className="input select" value={v} aria-invalid={inv} onChange={(e) => set(e.target.value)}>
           <option value="">Pilih…</option>
           {f.options!.map((o) => <option key={o}>{o}</option>)}
         </select>
@@ -261,7 +352,7 @@ function FieldInput({ f, value, onChange, id, invalid }: {
         <div className="yesno" role="radiogroup" aria-labelledby={`${id}-l`}>
           {['Ya', 'Tidak'].map((o) => (
             <label key={o} className={`pill pill-text${v === o ? ' is-on' : ''}`}>
-              <input type="radio" name={id} checked={v === o} onChange={() => onChange(o)} />
+              <input type="radio" name={id} checked={v === o} onChange={() => set(o)} />
               <span className="pill-num">{o}</span>
             </label>
           ))}
@@ -269,16 +360,16 @@ function FieldInput({ f, value, onChange, id, invalid }: {
       );
     case 'month': {
       const [y = '', m = ''] = v.split('-');
-      const set = (ny: string, nm: string) => onChange(ny || nm ? `${ny}-${nm}` : '');
+      const setYM = (ny: string, nm: string) => set(ny || nm ? `${ny}-${nm}` : '');
       return (
         <div className="month">
           <select id={id} className="input select" value={m} aria-label={`${f.label}: bulan`} aria-invalid={inv}
-            onChange={(e) => set(y, e.target.value)}>
+            onChange={(e) => setYM(y, e.target.value)}>
             <option value="">Bulan</option>
             {MONTH_NAMES.map((n, i) => <option key={n} value={String(i + 1).padStart(2, '0')}>{n}</option>)}
           </select>
           <select className="input select" value={y} aria-label={`${f.label}: tahun`} aria-invalid={inv}
-            onChange={(e) => set(e.target.value, m)}>
+            onChange={(e) => setYM(e.target.value, m)}>
             <option value="">Tahun</option>
             {(f.years ?? []).map((yr) => <option key={yr}>{yr}</option>)}
           </select>
@@ -295,6 +386,17 @@ export function Repeater({ q, value, onChange, labelledBy, issue }: {
   const base = useId();
   const ans = value ?? emptyRepeater(q);
   const setRow = (i: number, row: Row) => onChange({ ...ans, rows: ans.rows.map((r, j) => (j === i ? row : r)) });
+  // Ubah satu kolom; kolom yang bergantung padanya (percabangan) dikosongkan bila induknya berganti.
+  const patchRow = (i: number, row: Row, patch: Row) => {
+    const next: Row = { ...row, ...patch };
+    for (const g of q.fields) {
+      if (g.dependsOn && g.dependsOn in patch && patch[g.dependsOn] !== row[g.dependsOn]) {
+        next[g.id] = [];
+        next[otherKey(g)] = '';
+      }
+    }
+    setRow(i, next);
+  };
   const canAdd = ans.rows.length < q.maxRows;
 
   return (
@@ -325,11 +427,20 @@ export function Repeater({ q, value, onChange, labelledBy, issue }: {
                 <div className="rgrid">
                   {q.fields.map((f) => {
                     const id = `${base}-${i}-${f.id}`;
+                    const group = f.type === 'radio' || f.type === 'checks';
+                    const label = (
+                      <>
+                        {f.label}
+                        {f.optional && <span className="opt"> (opsional)</span>}
+                      </>
+                    );
                     return (
-                      <div className={`rfield${f.wide ? ' is-wide' : ''}${bad.has(f.id) ? ' is-missing' : ''}`} key={f.id}>
-                        <label className="rlabel" htmlFor={id} id={`${id}-l`}>{f.label}</label>
-                        <FieldInput f={f} id={id} value={row[f.id]} invalid={bad.has(f.id)}
-                          onChange={(v) => setRow(i, { ...row, [f.id]: v })} />
+                      <div className={`rfield rfield-${f.type}${f.wide ? ' is-wide' : ''}${bad.has(f.id) ? ' is-missing' : ''}`} key={f.id}>
+                        {group
+                          ? <p className="rlabel rlabel-q" id={`${id}-l`}>{label}</p>
+                          : <label className="rlabel" htmlFor={id} id={`${id}-l`}>{label}</label>}
+                        <FieldInput f={f} id={id} row={row} invalid={bad.has(f.id)}
+                          onChange={(patch) => patchRow(i, row, patch)} />
                       </div>
                     );
                   })}

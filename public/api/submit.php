@@ -118,8 +118,8 @@ try {
         mb_substr((string) ($data['version'] ?? ''), 0, 16),
         to_datetime($data['startedAt'] ?? null),
         $duration,
-        first_with_prefix($answers, '1.3 '),
-        first_with_prefix($answers, '1.5 '),
+        first_with_prefix($answers, '1.4 '),
+        first_with_prefix($answers, '1.6 '),
         json_encode($answers, $json),
         $raw,
     ]);

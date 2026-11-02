@@ -8,8 +8,8 @@ CREATE TABLE IF NOT EXISTS responses (
   submitted_at     DATETIME      NOT NULL,              -- waktu diterima server
   started_at       DATETIME      NULL,                  -- waktu mulai mengisi (dari browser)
   duration_minutes DECIMAL(6,1)  NULL,                  -- lama pengisian
-  divisi           VARCHAR(255)  NULL,                  -- salinan jawaban 1.3, untuk filter cepat
-  peran            VARCHAR(100)  NULL,                  -- salinan jawaban 1.5, untuk filter cepat
+  divisi           VARCHAR(255)  NULL,                  -- salinan jawaban 1.4, untuk filter cepat
+  peran            VARCHAR(100)  NULL,                  -- salinan jawaban 1.6, untuk filter cepat
   answers          LONGTEXT      NOT NULL,              -- JSON: { "nama kolom": nilai, ... }
   raw              LONGTEXT      NULL,                  -- JSON jawaban mentah (cadangan)
   created_at       TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS responses (
   KEY idx_peran (peran)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Baris tabel isian berulang (2.5 tarif vendor, 4.2 kebutuhan alat, 4.10 pelepasan alat):
+-- Baris tabel isian berulang (2.6 tarif vendor, 4.4 kebutuhan alat):
 -- satu baris per alat.
 CREATE TABLE IF NOT EXISTS response_items (
   id          INT UNSIGNED      NOT NULL AUTO_INCREMENT,

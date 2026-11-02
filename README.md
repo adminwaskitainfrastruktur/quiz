@@ -1,6 +1,6 @@
 # Kuesioner WKI — Survei Kebutuhan & Layanan Peralatan
 
-Situs kuesioner responsif (HP, tablet, desktop) dari dokumen **Kuesioner WASKITA v2**.
+Situs kuesioner responsif (HP, tablet, desktop) dari dokumen **Kuesioner WASKITA v2**, sudah termasuk revisi Book1.xlsx (2 Nov 2026).
 Dibuat dengan React + TypeScript (TSX). Jawaban disimpan ke MySQL lewat PHP, sehingga bisa
 dipasang di hosting Hostinger biasa tanpa Node.js.
 
@@ -9,12 +9,14 @@ dipasang di hosting Hostinger biasa tanpa Node.js.
 
 ## Fitur
 
-- Satu bagian per halaman, ada bilah kemajuan, dan pertanyaan wajib dicek sebelum lanjut.
-- Logika lompat sesuai dokumen: 3.1 → 3.2, 4.6 "Tidak ada" → lewati 4.7–4.8, 4.9 "Tidak" → lewati 4.10–4.12.
-- Tabel isian (2.5, 4.2, 4.10) berupa kartu yang barisnya bisa ditambah, jadi tidak perlu template Excel terpisah.
-- Skala dan matriks 1–5 tampil sebagai tabel di desktop dan sebagai tombol besar di HP.
-- Draf tersimpan otomatis di browser. Responden bisa menutup halaman lalu melanjutkan nanti.
-- Halaman ringkasan sebelum kirim. Bila koneksi gagal, responden bisa coba lagi atau mengunduh salinan jawaban.
+- Satu bagian per halaman dengan animasi transisi, ilustrasi alat berat, bilah kemajuan bergambar truk,
+  penanda hijau untuk pertanyaan yang sudah terjawab, pesan penyemangat, dan konfeti saat terkirim.
+- Logika lompat: 3.1 → 3.2; 3.7 "hanya subkon" → lewati 3.8–3.9; 4.1 "Tidak" → lewati 4.2 dan 5.3;
+  4.8 "Tidak ada" → lewati 4.9–4.10.
+- 2.6 Alat 1–3: pilih kelompok alat (kartu bergambar), lalu centang tipe alat dari kelompok itu saja.
+- 3.2 dan 3.6 berupa peringkat: setiap nilai 1–5 hanya boleh dipakai satu kali (3.6 = top 5 dari 7 aspek).
+- Tabel isian (2.6, 4.4) berupa kartu yang barisnya bisa ditambah.
+- Draf tersimpan otomatis di browser; ada halaman ringkasan sebelum kirim.
 - Halaman admin `/admin/` menampilkan jumlah respons dan tombol unduh CSV untuk Excel.
 
 ## Struktur
@@ -88,7 +90,7 @@ Saat memperbarui situs, cukup timpa `index.html` dan folder `assets/`. Jangan me
 
 - `/admin/` → **Semua jawaban**: satu baris per responden, satu kolom per pertanyaan.
   Untuk matriks, setiap faktor punya kolom sendiri.
-- Tombol **2.5 / 4.2 / 4.10**: satu baris per alat, lengkap dengan ID respons dan divisi.
+- Tombol **2.6 / 4.4**: satu baris per alat, lengkap dengan ID respons dan divisi.
 - Pertanyaan yang dilewati karena logika lompat tetap punya kolom, tetapi kosong.
 - Kolom `Durasi (menit)` dapat dipakai untuk mengukur waktu pengisian saat uji coba.
 

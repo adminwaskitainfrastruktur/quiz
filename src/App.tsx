@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { QuestionCard, domId } from './components/QuestionCard';
+import { HeroScene, StepArt } from './components/Art';
+import { Confetti } from './components/Confetti';
 import { Icon } from './components/Icon';
 import { CONFIG } from './config';
-import { answerText, buildPayload, isVisible, validateStep, type Payload } from './logic';
+import { answerText, buildPayload, isVisible, validate, validateStep, type Payload } from './logic';
 import { clearDraft, loadDraft, newId, saveDraft } from './storage';
 import { SURVEY } from './survey';
 import type { Answer, Answers } from './types';
@@ -12,6 +15,17 @@ const INTRO = -1;
 const REVIEW = STEPS.length;
 
 type Sending = { state: 'idle' } | { state: 'sending' } | { state: 'error'; message: string };
+
+// Pesan penyemangat setelah satu bagian selesai
+const CHEERS = [
+  'Mantap, profil beres!',
+  'Bagian biaya alat tuntas!',
+  'Setengah jalan lebih — terus!',
+  'Data kebutuhan alat terekam!',
+  'Sedikit lagi!',
+  'Tinggal satu pertanyaan terakhir!',
+  'Semua bagian terisi!',
+];
 
 export default function App() {
   const initial = useMemo(loadDraft, []);
@@ -24,7 +38,10 @@ export default function App() {
   const [sending, setSending] = useState<Sending>({ state: 'idle' });
   const [done, setDone] = useState<{ id: string } | null>(null);
   const [focusFirstError, setFocusFirstError] = useState(0);
+  const [dir, setDir] = useState<'fwd' | 'back'>('fwd');
+  const [toast, setToast] = useState<{ text: string; key: number } | null>(null);
   const lastPayload = useRef<Payload | null>(null);
+  const entered = useRef<{ step: number; nums: Set<string> }>({ step: -2, nums: new Set() });
   const hasDraft = !!initial && Object.keys(initial.answers).length > 0;
 
   // Simpan draf otomatis
@@ -72,6 +89,12 @@ export default function App() {
     }
   };
 
+  // Pindah langkah dengan arah animasi
+  const go = (target: number) => {
+    setDir(target < step ? 'back' : 'fwd');
+    setStep(target);
+  };
+
   const tryLeave = (target: number) => {
     if (step >= 0 && step < REVIEW && target > step) {
       if (issuesFor(step).size) {
@@ -79,22 +102,29 @@ export default function App() {
         setFocusFirstError((n) => n + 1);
         return;
       }
+      setToast({ text: CHEERS[step] ?? 'Bagian selesai!', key: Date.now() });
     }
-    setStep(target);
+    go(target);
   };
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 2600);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const next = () => {
     if (returnToReview) {
       if (issuesFor(step).size) return tryLeave(REVIEW);
       setReturnToReview(false);
-      return setStep(REVIEW);
+      return go(REVIEW);
     }
     tryLeave(step + 1);
   };
 
   const edit = (i: number) => {
     setReturnToReview(true);
-    setStep(i);
+    go(i);
   };
 
   const submit = async () => {
@@ -162,7 +192,7 @@ export default function App() {
   else if (step === REVIEW) {
     view = (
       <Review
-        answers={answers} onEdit={edit} onBack={() => setStep(REVIEW - 1)} onSubmit={submit}
+        answers={answers} onEdit={edit} onBack={() => go(REVIEW - 1)} onSubmit={submit}
         sending={sending} onDownload={downloadBackup}
       />
     );
@@ -170,12 +200,25 @@ export default function App() {
     const s = STEPS[step];
     const issues = attempted.has(step) ? issuesFor(step) : new Map();
     const visible = s.questions.filter((q) => isVisible(q, answers));
+    // Animasi muncul bertahap hanya untuk kartu yang ada saat bagian dibuka;
+    // kartu yang muncul belakangan (logika lompat) langsung tampil tanpa jeda.
+    if (entered.current.step !== step) entered.current = { step, nums: new Set(visible.map((q) => q.num)) };
+    const req = visible.filter((q) => q.required);
+    const doneCount = req.filter((q) => answerText(q, answers) !== null && !validate(q, answers)).length;
     view = (
       <>
+        {s.bridge && <p className="bridge"><Icon name="right" /> {s.bridge}</p>}
         <div className="step-head">
-          <p className="kicker">{s.kicker}</p>
-          <h2>{s.title}</h2>
-          <p className="muted">{s.desc}</p>
+          <StepArt id={s.id} />
+          <div>
+            <p className="kicker">{s.kicker}</p>
+            <h2>{s.title}</h2>
+            <p className="muted">{s.desc}</p>
+            <p className="step-meter" aria-live="polite">
+              <span className="step-meter-bar"><span style={{ width: `${req.length ? (doneCount / req.length) * 100 : 100}%` }} /></span>
+              {doneCount}/{req.length} pertanyaan wajib terjawab
+            </p>
+          </div>
         </div>
         {issues.size > 0 && (
           <div className="banner banner-error" role="status">
@@ -183,13 +226,15 @@ export default function App() {
             <span>{issues.size === 1 ? 'Ada 1 pertanyaan' : `Ada ${issues.size} pertanyaan`} yang perlu dilengkapi sebelum lanjut.</span>
           </div>
         )}
-        {visible.map((q) => (
+        {visible.map((q, i) => (
           <QuestionCard key={q.num} q={q} value={answers[q.num]} issue={issues.get(q.num) ?? null}
+            index={entered.current.nums.has(q.num) ? i : 0}
+            done={answerText(q, answers) !== null && !validate(q, answers)}
             onChange={(v) => setAnswer(q.num, v)} />
         ))}
-        <nav className="navbar" aria-label="Navigasi kuesioner">
+        <Dock><nav className="navbar" aria-label="Navigasi kuesioner">
           <div className="navbar-in">
-            <button type="button" className="btn btn-ghost" onClick={() => setStep(step - 1)}>
+            <button type="button" className="btn btn-ghost" onClick={() => go(step - 1)}>
               <Icon name="left" /> Kembali
             </button>
             <span className="saved"><Icon name="check" /> Tersimpan otomatis</span>
@@ -197,7 +242,7 @@ export default function App() {
               {returnToReview ? 'Simpan & ke ringkasan' : step === REVIEW - 1 ? 'Periksa jawaban' : 'Lanjut'} <Icon name="right" />
             </button>
           </div>
-        </nav>
+        </nav></Dock>
       </>
     );
   }
@@ -213,16 +258,32 @@ export default function App() {
               <small>{SURVEY.title}</small>
             </span>
           </div>
-          {!done && step >= 0 && <Progress step={step} onJump={(i) => (i < step ? setStep(i) : undefined)} />}
+          {!done && step >= 0 && <Progress step={step} onJump={(i) => (i < step ? go(i) : undefined)} />}
         </div>
       </header>
       <main id="main" tabIndex={-1} className={`main${step === INTRO && !done ? ' main-intro' : ''}`}>
-        <div className="wrap">{view}</div>
+        <div className="wrap">
+          <div key={done ? 'done' : step} className={`stage stage-${dir}`}>{view}</div>
+        </div>
       </main>
+      {toast && (
+        <div className="toast" key={toast.key} role="status">
+          <Icon name="check" /> {toast.text}
+        </div>
+      )}
+      {done && <Confetti />}
       {/* Umpan untuk bot (honeypot) — tidak terlihat oleh responden */}
       <input id="hp" name="website" type="text" tabIndex={-1} autoComplete="off" className="hp" aria-hidden="true" />
     </div>
   );
+}
+
+/**
+ * Bilah navigasi bawah dirender langsung di <body>, di luar area beranimasi:
+ * elemen ber-transform membuat `position: fixed` di dalamnya ikut bergulir.
+ */
+function Dock({ children }: { children: ReactNode }) {
+  return createPortal(children, document.body);
 }
 
 function Progress({ step, onJump }: { step: number; onJump: (i: number) => void }) {
@@ -245,6 +306,9 @@ function Progress({ step, onJump }: { step: number; onJump: (i: number) => void 
           </li>
         ))}
       </ol>
+      <span className="progress-truck" style={{ left: `calc(14px + (100% - 28px) * ${pct / 100})` }} aria-hidden="true">
+        <svg viewBox="0 0 28 16" width="28" height="16"><path d="M1 3h14v9H1z" fill="#f5a524" /><path d="M16 6h6l4 4v2H16z" fill="#fff" /><circle cx="6" cy="13" r="2.4" fill="#fff" /><circle cx="21" cy="13" r="2.4" fill="#fff" /></svg>
+      </span>
       <span className="sr-only">{pct}% selesai</span>
     </div>
   );
@@ -257,6 +321,7 @@ function Intro({ hasDraft, onStart }: { hasDraft: boolean; onStart: (fresh: bool
       <div className="hero">
         <p className="kicker">{SURVEY.subtitle}</p>
         <h1>{SURVEY.title}</h1>
+        <HeroScene />
         <p className="lead">{intro.lead}</p>
         <ul className="chips">
           <li><Icon name="clock" /> {SURVEY.duration}</li>
@@ -280,8 +345,8 @@ function Intro({ hasDraft, onStart }: { hasDraft: boolean; onStart: (fresh: bool
       </div>
       <h2 className="section-title">Survei ini bertujuan memperoleh gambaran mengenai</h2>
       <ol className="goals">
-        {intro.goals.map((g) => (
-          <li key={g.title}>
+        {intro.goals.map((g, i) => (
+          <li key={g.title} style={{ ['--i' as string]: i }}>
             <span className="goal-icon" aria-hidden="true"><Icon name={g.icon} /></span>
             <b>{g.title}</b>
             <p>{g.text}</p>
@@ -342,7 +407,7 @@ function Review({ answers, onEdit, onBack, onSubmit, sending, onDownload }: {
           </div>
         </div>
       )}
-      <nav className="navbar" aria-label="Navigasi kuesioner">
+      <Dock><nav className="navbar" aria-label="Navigasi kuesioner">
         <div className="navbar-in">
           <button type="button" className="btn btn-ghost" onClick={onBack}><Icon name="left" /> Kembali</button>
           <span className="saved"><Icon name="check" /> Tersimpan otomatis</span>
@@ -351,7 +416,7 @@ function Review({ answers, onEdit, onBack, onSubmit, sending, onDownload }: {
             {sending.state !== 'sending' && <Icon name="send" />}
           </button>
         </div>
-      </nav>
+      </nav></Dock>
     </>
   );
 }

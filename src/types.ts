@@ -3,6 +3,12 @@
 /** Opsi pilihan. Bentuk objek menampilkan kolom isian tambahan saat dipilih ("Lainnya: ___"). */
 export type Option = string | { label: string; input: string };
 
+/** Pilihan dengan keterangan kecil di bawahnya. */
+export interface Choice {
+  label: string;
+  hint?: string;
+}
+
 export type Answers = Record<string, Answer | undefined>;
 
 interface Base {
@@ -21,10 +27,14 @@ export interface TextQ extends Base {
   type: 'text' | 'textarea';
   placeholder?: string;
   autocomplete?: string;
+  /** Validasi format isian. */
+  format?: 'email';
 }
 export interface RadioQ extends Base {
   type: 'radio';
   options: Option[];
+  /** Tampilkan sebagai daftar tarik-turun. */
+  dropdown?: boolean;
 }
 export interface CheckboxQ extends Base {
   type: 'checkbox';
@@ -52,16 +62,23 @@ export interface MatrixQ extends Base {
   /** Label skala 1..n. */
   labels: string[];
   rows: (string | MatrixRow)[];
+  /**
+   * Setiap nilai hanya boleh dipakai satu kali (peringkat). Bila wajib, semua nilai 1..n harus terpakai;
+   * baris yang lebih banyak dari jumlah nilai boleh dibiarkan kosong (mis. "top 5" dari 7 aspek).
+   */
+  unique?: boolean;
 }
 export interface AllocationQ extends Base {
   type: 'allocation';
   rows: string[];
 }
 
-export type FieldType = 'text' | 'currency' | 'int' | 'select' | 'yesno' | 'month';
+export type FieldType = 'text' | 'currency' | 'int' | 'select' | 'yesno' | 'month' | 'radio' | 'checks';
 export interface Field {
   id: string;
   label: string;
+  /** Nama kolom saat diekspor (bawaan: label). */
+  column?: string;
   type: FieldType;
   placeholder?: string;
   options?: string[];
@@ -71,6 +88,15 @@ export interface Field {
   years?: number[];
   /** Lebar penuh di dalam kartu baris. */
   wide?: boolean;
+  /** Boleh dikosongkan. */
+  optional?: boolean;
+  /** 'radio': daftar pilihan (dengan keterangan). */
+  choices?: Choice[];
+  /** 'checks': opsi bergantung pada jawaban kolom lain di baris yang sama (percabangan). */
+  dependsOn?: string;
+  optionsBy?: Record<string, string[]>;
+  /** 'checks': teks petunjuk untuk isian "Lainnya"; bila diisi, opsi "Lainnya" ditambahkan. */
+  other?: string;
 }
 export interface RepeaterQ extends Base {
   type: 'repeater';
@@ -94,6 +120,8 @@ export interface Step {
   kicker: string;
   title: string;
   desc: string;
+  /** Kalimat penghubung dari bagian sebelumnya. */
+  bridge?: string;
   questions: Question[];
 }
 
@@ -115,7 +143,8 @@ export interface Survey {
 export type IconName = 'gauge' | 'handshake' | 'calendar' | 'wrench';
 
 // ── Jawaban per tipe ──────────────────────────────────────────────
-export type Row = Record<string, string>;
+/** Satu baris tabel isian. Kolom 'checks' berisi daftar; isian "Lainnya"-nya di `<id>__lainnya`. */
+export type Row = Record<string, string | string[]>;
 export type Answer =
   | string // text, textarea
   | number // scale

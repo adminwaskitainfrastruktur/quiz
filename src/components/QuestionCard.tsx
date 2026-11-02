@@ -6,8 +6,9 @@ import { Allocation, CheckboxGroup, Matrix, RadioGroup, Repeater, Scale, TextInp
 
 export const domId = (num: string) => `q-${num.replace(/\./g, '-')}`;
 
-export function QuestionCard({ q, value, onChange, issue }: {
+export function QuestionCard({ q, value, onChange, issue, index = 0, done = false }: {
   q: Question; value: Answer | undefined; onChange: (v: Answer) => void; issue: Issue | null;
+  index?: number; done?: boolean;
 }) {
   const id = domId(q.num);
   const titleId = `${id}-t`;
@@ -40,9 +41,13 @@ export function QuestionCard({ q, value, onChange, issue }: {
   }
 
   return (
-    <section className={`qcard${issue ? ' has-error' : ''}`} id={id} aria-describedby={issue ? errId : undefined}>
+    <section className={`qcard${issue ? ' has-error' : ''}${done ? ' is-done' : ''}`} id={id}
+      aria-describedby={issue ? errId : undefined} style={{ ['--i' as string]: Math.min(index, 8) }}>
       <header className="qhead">
-        <span className="qnum">{q.num}</span>
+        <span className="qnum">
+          <span className="qnum-text">{q.num}</span>
+          <svg className="qnum-check" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </span>
         <h3 className="qtitle" id={titleId}>
           {q.title}
           {q.required

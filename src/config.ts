@@ -3,7 +3,7 @@
 export const CONFIG = {
   endpoint: import.meta.env.VITE_ENDPOINT || 'api/submit.php',
   /** Kunci penyimpanan draf di browser responden. Ganti bila struktur kuesioner berubah besar. */
-  storageKey: 'kuesioner-wki-v2',
+  storageKey: 'kuesioner-wki-v3',
   /** Batas waktu kirim (ms). */
   timeoutMs: 30000,
 };

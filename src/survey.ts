@@ -1,5 +1,5 @@
 /*
- * ISI KUESIONER — sumber: "Kuesioner WASKITA v2" (19 Okt 2026).
+ * ISI KUESIONER — sumber: "Kuesioner WASKITA v2" (19 Okt 2026) + revisi Book1.xlsx (2 Nov 2026).
  *
  * Ubah teks, opsi, atau urutan pertanyaan di file ini saja; tampilan,
  * validasi, ringkasan, dan data yang dikirim ke database mengikuti otomatis.
@@ -9,6 +9,9 @@
  *   radio      pilih satu                 checkbox   pilih beberapa (max = batas pilihan)
  *   scale      skala angka (min..max)     matrix     beberapa baris dinilai 1–5
  *   allocation porsi persen, total 100%   repeater   tabel isian berulang (baris bisa ditambah)
+ *
+ * Variasi: radio + dropdown:true → daftar tarik-turun; text + format:'email' → cek alamat email;
+ * matrix + unique:true → setiap nilai hanya boleh dipakai satu kali (peringkat).
  *
  * Kunci umum:
  *   num       nomor pertanyaan (dipakai juga sebagai nama kolom di database)
@@ -38,30 +41,81 @@ const PROVINSI = [
   'Papua Pegunungan',
 ];
 
+// Kelompok alat untuk 2.6 (a → b). Urutan ini juga menentukan ilustrasi di kartu pilihan.
+const KELOMPOK_ALAT = [
+  {
+    label: 'Earthworks Equipment',
+    hint: 'Alat untuk proses pekerjaan tanah.',
+    types: ['Excavator', 'Dozer', 'Vibrator Roller', 'Vibrator Sheepfoot', 'Wheel Loader', 'Motor Grader'],
+  },
+  {
+    label: 'Transportation Equipment',
+    hint: 'Alat untuk hauling material serta mobilisasi/demobilisasi.',
+    types: ['Dumptruck', 'Self Loader Crane', 'Truck Flat Bed', 'Truck Low Bed', 'Truck Ankle', 'Water Tank Container'],
+  },
+  {
+    label: 'Material Production Equipment',
+    hint: 'Alat untuk proses produksi material.',
+    types: ['Stone Crusher Plant', 'Asphalt Mixing Plant', 'Batching Plant', 'Steel Production Plant'],
+  },
+  {
+    label: 'Lifting Production Equipment',
+    hint: 'Alat untuk proses pengangkatan (lifting).',
+    types: ['Tower Crane', 'Crawler Crane', 'Rough Terrain Crane', 'Boomlift', 'Forklift'],
+  },
+  {
+    label: 'Measurement & Survey Equipment',
+    hint: 'Alat untuk pekerjaan pengukuran dan survei.',
+    types: ['Total Station', 'Waterpass', 'Theodolite', 'GPS System', 'Drone Camera', 'Weight Bridge'],
+  },
+  {
+    label: 'Erection Equipment',
+    hint: 'Alat untuk pekerjaan erection.',
+    types: ['Erection Tools', 'Ginpole Tools', 'Stringing Tools'],
+  },
+  {
+    label: 'Light Equipment',
+    hint: 'Alat ringan di luar alat berat untuk mendukung pekerjaan konstruksi.',
+    types: ['Generating Set', 'Compressor'],
+  },
+  {
+    label: 'Others Equipment',
+    hint: 'Alat lain untuk mendukung pekerjaan konstruksi.',
+    types: ['Bar Bender', 'Bar Cutter', 'Pompa', 'Scaffolding'],
+  },
+];
+
 const LAINNYA = (placeholder?: string): Option => ({ label: 'Lainnya', input: placeholder || 'Sebutkan' });
+
+const SUBKON = 'Subkon paket pekerjaan ke WKI';
+// 3.8–3.9 hanya relevan bila responden memilih bentuk sewa (bukan hanya subkon)
+const pilihSewa = (a: Answers) => {
+  const v = (a['3.7'] as MultiAnswer | undefined)?.values ?? [];
+  return v.length === 0 || v.some((x) => x !== SUBKON);
+};
+const pakaiAlatWki = (a: Answers) => pilihan(a, '4.1') === 'Ya';
+
 
 export const SURVEY: Survey = {
   org: 'PT Waskita Karya Infrastruktur',
   title: 'Survei Kebutuhan & Layanan Peralatan',
   subtitle: 'Untuk stakeholder WSKT · Rencana 2027–2029',
-  version: 'v2',
+  version: 'v3',
   duration: '± 15 menit',
 
   intro: {
     lead:
-      'Pasca inbreng aset dari PT Waskita Karya (Persero) Tbk, PT Waskita Karya ' +
-      'Infrastruktur (WKI) menyusun ulang pengelolaan, layanan, dan rencana investasi ' +
-      'peralatan. Survei ini mengumpulkan kebutuhan dan harapan pengguna di WSKT agar ' +
-      'alat yang disiapkan WKI sesuai dengan proyek Bapak/Ibu.',
+      'PT Waskita Karya Infrastruktur (WKI) berencana menyusun ulang pengelolaan, layanan, ' +
+      'dan rencana investasi peralatan. Melalui survei singkat ini, kami ingin mendengar ' +
+      'kebutuhan dan harapan Bapak/Ibu, agar peralatan yang kami siapkan benar-benar ' +
+      'mendukung proyek Bapak/Ibu.',
     goals: [
       { icon: 'gauge', title: 'Kondisi & biaya alat', text: 'Kondisi dan biaya pemanfaatan peralatan saat ini.' },
-      { icon: 'handshake', title: 'Tarif & kerja sama', text: 'Penerimaan terhadap skema tarif sewa dan bentuk kerja sama dengan WKI.' },
+      { icon: 'handshake', title: 'Tarif & kerja sama', text: 'Pandangan terhadap skema tarif sewa dan bentuk kerja sama dengan WKI.' },
       { icon: 'calendar', title: 'Kebutuhan 2027–2029', text: 'Jenis, jumlah, waktu, lokasi, dan durasi kebutuhan alat.' },
       { icon: 'wrench', title: 'Layanan & SLA', text: 'Harapan terhadap layanan dan tingkat layanan (SLA) WKI.' },
     ],
-    privacy:
-      'Tidak ada jawaban benar atau salah. Jawaban diolah dan dilaporkan secara agregat; ' +
-      'identitas responden tidak dicantumkan dalam laporan.',
+    privacy: 'Tidak ada jawaban benar atau salah. Jawaban diolah dan dilaporkan secara agregat.',
     thanks: 'Terima kasih atas waktu dan partisipasi Bapak/Ibu.',
   },
 
@@ -74,25 +128,44 @@ export const SURVEY: Survey = {
       desc: 'Membantu kami membaca jawaban sesuai peran Bapak/Ibu.',
       questions: [
         { num: '1.1', type: 'text', title: 'Nama', short: 'Nama', placeholder: 'Boleh dikosongkan', autocomplete: 'name' },
-        { num: '1.2', type: 'text', title: 'Jabatan/posisi', required: true, placeholder: 'Contoh: Kepala Proyek', autocomplete: 'organization-title' },
         {
-          num: '1.3', type: 'radio', title: 'Divisi/departemen', required: true,
+          num: '1.2', type: 'text', format: 'email', required: true,
+          title: 'Alamat email', short: 'Email',
+          placeholder: 'nama@contoh.co.id', autocomplete: 'email',
+        },
+        {
+          num: '1.3', type: 'radio', dropdown: true, required: true,
+          title: 'Jabatan/posisi', short: 'Jabatan',
+          options: [
+            'Kepala Divisi',
+            'Kepala Departemen',
+            'Manager',
+            'Kepala Proyek / Project Manager',
+            'Site Manager',
+            'Supervisor / Kepala Seksi',
+            'Engineer',
+            'Staf',
+            LAINNYA('Sebutkan jabatan'),
+          ],
+        },
+        {
+          num: '1.4', type: 'radio', title: 'Divisi/departemen', required: true,
           options: [
             'Divisi Infrastruktur I',
             'Divisi Infrastruktur II',
             'Divisi Infrastruktur III',
             'Divisi Gedung',
-            'Kantor Pusat (SCM, Peralatan, Corporate Strategy, dan lainnya)',
+            'Head Office',
             LAINNYA('Sebutkan divisi/departemen'),
           ],
         },
         {
-          num: '1.4', type: 'text', title: 'Proyek yang sedang dikelola', short: 'Proyek', required: true,
-          hint: 'Tulis nama proyek dan provinsinya.',
+          num: '1.5', type: 'text', title: 'Proyek yang sedang dikelola', short: 'Proyek', required: true,
+          hint: 'Tulis nama proyek dan provinsinya. Bila tidak sedang mengelola proyek, cukup tulis “Kantor”.',
           placeholder: 'Contoh: SPAM Regional X – Jawa Barat',
         },
         {
-          num: '1.5', type: 'radio', title: 'Peran Anda dalam keputusan pengadaan atau sewa alat di proyek',
+          num: '1.6', type: 'radio', title: 'Peran Anda dalam keputusan pengadaan atau sewa alat di proyek',
           short: 'Peran dalam pengadaan/sewa', required: true,
           options: ['Pengambil keputusan', 'Pemberi rekomendasi', 'Pengguna alat', 'Tidak terlibat'],
         },
@@ -117,10 +190,16 @@ export const SURVEY: Survey = {
           title: 'Perkirakan porsi penyediaan alat di proyek Anda saat ini',
           short: 'Porsi penyediaan alat',
           hint: 'Isi dalam persen; totalnya harus 100%.',
-          rows: ['Alat yang dikelola unit bisnis / WKI', 'Alat milik subkontraktor', 'Sewa dari vendor eksternal'],
+          rows: ['Alat yang dikelola unit bisnis atau dikelola WKI', 'Alat milik subkontraktor', 'Sewa dari vendor eksternal'],
         },
         {
-          num: '2.3', type: 'checkbox', required: true,
+          num: '2.3', type: 'radio', required: true,
+          title: 'Berapa total unit alat yang digunakan pada proyek saat ini?',
+          short: 'Total unit alat di proyek',
+          options: ['1–5 unit', '6–10 unit', '11–15 unit', '16–20 unit', '21–25 unit', '> 25 unit'],
+        },
+        {
+          num: '2.4', type: 'checkbox', required: true,
           title: 'Biaya alat apa saja yang saat ini dibebankan ke proyek untuk alat yang dikelola unit bisnis?',
           short: 'Biaya alat yang dibebankan ke proyek',
           hint: 'Boleh pilih lebih dari satu.',
@@ -137,28 +216,47 @@ export const SURVEY: Survey = {
           ],
         },
         {
-          num: '2.4', type: 'radio', required: true,
+          num: '2.5', type: 'radio', required: true,
           title: 'Perkiraan total biaya alat yang dibebankan ke proyek per bulan',
           short: 'Total biaya alat per bulan',
           options: ['< Rp100 juta', 'Rp100–250 juta', '> Rp250–500 juta', '> Rp500 juta–Rp1 miliar', '> Rp1 miliar', 'Tidak tahu'],
         },
         {
-          num: '2.5', type: 'repeater', required: true,
+          num: '2.6', type: 'repeater', required: true,
           title: 'Untuk alat yang paling sering Anda sewa dari vendor eksternal, berapa tarif yang dibayar?',
           short: 'Tarif sewa vendor eksternal',
           tableName: 'Tarif vendor eksternal',
-          hint: 'Isi untuk 1–3 jenis alat. Tarif ini dipakai sebagai pembanding harga WKI.',
+          hint: 'Isi untuk 1–3 alat. Tarif ini dipakai sebagai pembanding harga WKI.',
           itemLabel: 'Alat',
           initialRows: 1, maxRows: 3, minFilled: 1,
           optOut: 'Proyek saya tidak menyewa alat dari vendor eksternal',
-          example: 'Excavator 20 T · Rp45.000.000 per bulan · termasuk operator · tidak termasuk BBM',
+          example: 'a. Earthworks Equipment · b. Excavator · 20 T · Rp45.000.000 per bulan · termasuk operator · tidak termasuk BBM',
           fields: [
-            { id: 'jenis', label: 'Jenis dan kapasitas alat', type: 'text', placeholder: 'Contoh: Excavator 20 T', wide: true },
+            {
+              id: 'kategori', type: 'radio', wide: true, column: 'Kelompok alat',
+              label: 'a. Jenis dan kapasitas alat apa saja yang menjadi preferensi Anda?',
+              choices: KELOMPOK_ALAT.map(({ label, hint }) => ({ label, hint })),
+            },
+            {
+              id: 'tipe', type: 'checks', wide: true, column: 'Tipe alat',
+              label: 'b. Tipe alat apa yang paling sering Anda sewa dari vendor eksternal?',
+              dependsOn: 'kategori',
+              optionsBy: Object.fromEntries(KELOMPOK_ALAT.map((k) => [k.label, k.types])),
+              other: 'Sebutkan tipe alat lainnya',
+            },
+            { id: 'kapasitas', label: 'Kapasitas/spesifikasi', type: 'text', placeholder: 'Contoh: 20 T', optional: true },
             { id: 'tarif', label: 'Tarif (Rp)', type: 'currency', placeholder: '45.000.000' },
             { id: 'satuan', label: 'Satuan', type: 'select', options: ['per jam', 'per hari', 'per bulan'] },
             { id: 'operator', label: 'Termasuk operator?', type: 'yesno' },
             { id: 'bbm', label: 'Termasuk BBM?', type: 'yesno' },
           ],
+        },
+        {
+          num: '2.7', type: 'textarea',
+          title: 'Alat lainnya: adakah alat lain di luar alat di atas yang sering Anda sewa dari vendor eksternal?',
+          short: 'Alat lain di luar 3 alat',
+          hint: 'Tuliskan jenis alatnya, atau saran Bapak/Ibu terkait sewa alat.',
+          placeholder: 'Contoh: concrete pump 36 m, sekitar Rp60 juta per bulan',
         },
       ],
     },
@@ -172,25 +270,23 @@ export const SURVEY: Survey = {
       questions: [
         {
           num: '3.1', type: 'radio', required: true,
-          title: 'Pasca inbreng, alat WKI yang dipakai proyek dikenakan tarif sewa. Bagaimana penerimaan Anda?',
+          title: 'Alat yang dikelola WKI dan dipakai proyek dikenakan tarif sewa. Bagaimana penerimaan Anda?',
           short: 'Penerimaan tarif sewa WKI',
           options: ['Sangat menerima', 'Menerima', 'Netral', 'Kurang menerima', 'Tidak menerima', 'Belum dapat menentukan'],
         },
         {
-          num: '3.2', type: 'matrix', required: true,
+          num: '3.2', type: 'matrix', unique: true, required: true,
           showIf: (a) => ['Kurang menerima', 'Tidak menerima'].includes(pilihan(a, '3.1')),
           title: 'Seberapa besar faktor berikut menjadi alasan keberatan Anda?',
           short: 'Alasan keberatan',
-          hint: 'Muncul karena Anda kurang/tidak menerima tarif sewa. Nilai setiap faktor.',
-          labels: ['Bukan alasan', 'Alasan kecil', 'Alasan sedang', 'Alasan besar', 'Alasan utama'],
+          hint: 'Urutkan kelima faktor: 5 = alasan paling utama, 1 = alasan paling kecil. Setiap nilai hanya boleh dipakai satu kali.',
+          labels: ['Paling kecil', 'Kecil', 'Sedang', 'Besar', 'Paling utama'],
           rows: [
-            'Tambahan biaya ke proyek',
-            'Tarif kurang kompetitif dibanding vendor',
+            'Aspek biaya (tarif yang kurang kompetitif dan margin sewa)',
             'Umur alat sudah tua',
-            'Risiko downtime tinggi',
             'Produktivitas alat kurang optimal',
-            'Proses administrasi lambat',
-            'Pengalaman kurang baik dengan layanan WKI',
+            'Jasa pelayanan maintenance',
+            'Proses administrasi lambat (respons admin)',
           ],
         },
         {
@@ -225,10 +321,11 @@ export const SURVEY: Survey = {
           ],
         },
         {
-          num: '3.6', type: 'matrix', required: true,
-          title: 'Seberapa penting aspek berikut saat memilih alat dan layanan WKI?',
-          short: 'Kepentingan aspek',
-          labels: ['Tidak penting', 'Kurang penting', 'Cukup penting', 'Penting', 'Sangat penting'],
+          num: '3.6', type: 'matrix', unique: true, required: true,
+          title: 'Pilih 5 aspek terpenting saat Anda memilih alat dan layanan WKI',
+          short: 'Top 5 aspek terpenting',
+          hint: 'Beri nilai 5 untuk aspek paling penting sampai 1 untuk urutan kelima. Setiap nilai hanya boleh dipakai satu kali; dua aspek dibiarkan kosong.',
+          labels: ['Urutan ke-5', 'Urutan ke-4', 'Urutan ke-3', 'Urutan ke-2', 'Paling penting'],
           rows: [
             'Tarif sewa kompetitif',
             'Ketersediaan alat saat dibutuhkan',
@@ -237,7 +334,6 @@ export const SURVEY: Survey = {
             'Fleksibilitas kontrak (sewa per jam, harian, bulanan)',
             'Kemudahan administrasi dan pembayaran',
             'Ketersediaan operator dan mekanik',
-            'Biaya mobilisasi',
           ],
         },
         {
@@ -249,13 +345,15 @@ export const SURVEY: Survey = {
             'Sewa alat saja (tanpa operator)',
             'Sewa alat dengan operator',
             'Sewa all-in (alat, operator, BBM)',
-            'Subkon paket pekerjaan ke WKI',
+            SUBKON,
           ],
         },
         {
           num: '3.8', type: 'radio', required: true,
-          title: 'Bila tarif dan kualitas kompetitif, berapa lama Anda bersedia berkontrak sewa dengan WKI?',
+          showIf: pilihSewa,
+          title: 'Bila menyewa alat dari WKI dengan tarif dan kualitas yang kompetitif, berapa lama Anda bersedia berkontrak sewa?',
           short: 'Lama kontrak sewa',
+          hint: 'Tidak ditanyakan bila Anda hanya memilih subkon paket pekerjaan.',
           options: [
             'Per kebutuhan, tanpa kontrak jangka panjang',
             'Sesuai durasi proyek',
@@ -267,6 +365,7 @@ export const SURVEY: Survey = {
         },
         {
           num: '3.9', type: 'radio', required: true,
+          showIf: pilihSewa,
           title: 'Skema pembayaran sewa yang paling sesuai',
           short: 'Skema pembayaran',
           options: [
@@ -284,10 +383,24 @@ export const SURVEY: Survey = {
       id: 'kebutuhan',
       kicker: 'Bagian 4A',
       title: 'Kebutuhan alat 2027–2029',
-      desc: 'Jenis, jumlah, waktu, dan lokasi alat yang perlu disiapkan WKI.',
+      desc: 'Kebutuhan alat, subkontraktor, dan divestasi alat — dimulai dari alat yang Bapak/Ibu pakai sekarang.',
+      bridge: 'Terima kasih atas pandangan Bapak/Ibu soal tarif. Sekarang kita beralih ke rencana: alat apa saja yang perlu disiapkan WKI untuk proyek Bapak/Ibu ke depan.',
       questions: [
         {
-          num: '4.1', type: 'matrix', required: true,
+          num: '4.1', type: 'radio', required: true,
+          title: 'Apakah proyek Anda saat ini memakai alat WKI?',
+          short: 'Memakai alat WKI',
+          options: ['Ya', 'Tidak'],
+        },
+        {
+          num: '4.2', type: 'radio', required: true,
+          showIf: pakaiAlatWki,
+          title: 'Apakah ada alat WKI yang masih Anda butuhkan untuk jangka panjang (lebih dari 12 bulan)?',
+          short: 'Alat WKI dibutuhkan jangka panjang',
+          options: [{ label: 'Ya', input: 'Sebutkan jenis alat dan jumlah unitnya, mis. 2 unit crawler crane 50 T' }, 'Tidak'],
+        },
+        {
+          num: '4.3', type: 'matrix', required: true,
           title: 'Jenis alat mana yang paling perlu disiapkan WKI untuk proyek Anda ke depan?',
           short: 'Kebutuhan jenis alat',
           labels: ['Tidak dibutuhkan', 'Kurang dibutuhkan', 'Cukup dibutuhkan', 'Dibutuhkan', 'Sangat dibutuhkan'],
@@ -305,7 +418,7 @@ export const SURVEY: Survey = {
           ],
         },
         {
-          num: '4.2', type: 'repeater', required: true,
+          num: '4.4', type: 'repeater', required: true,
           title: 'Rincian kebutuhan alat untuk proyek berjalan dan proyek yang direncanakan',
           short: 'Rincian kebutuhan alat',
           tableName: 'Kebutuhan alat',
@@ -326,7 +439,7 @@ export const SURVEY: Survey = {
           ],
         },
         {
-          num: '4.3', type: 'checkbox', max: 3,
+          num: '4.5', type: 'checkbox', max: 3,
           title: 'Merk alat berat yang paling Anda sukai',
           short: 'Merk alat berat favorit',
           hint: 'Pilih maksimal 3.',
@@ -336,14 +449,14 @@ export const SURVEY: Survey = {
           ],
         },
         {
-          num: '4.4', type: 'checkbox', max: 3,
+          num: '4.6', type: 'checkbox', max: 3,
           title: 'Merk kendaraan pendukung yang paling Anda sukai',
           short: 'Merk kendaraan pendukung favorit',
           hint: 'Pilih maksimal 3.',
           options: ['Hino', 'Isuzu', 'Mitsubishi Fuso', 'UD Trucks', 'Quester', 'Mercedes-Benz', 'Volvo', LAINNYA('Sebutkan merk')],
         },
         {
-          num: '4.5', type: 'checkbox', required: true, max: 3,
+          num: '4.7', type: 'checkbox', required: true, max: 3,
           title: 'Pertimbangan utama dalam memilih merk',
           short: 'Pertimbangan memilih merk',
           hint: 'Pilih maksimal 3.',
@@ -367,9 +480,10 @@ export const SURVEY: Survey = {
       kicker: 'Bagian 4B',
       title: 'Subkon paket pekerjaan',
       desc: 'Peluang kerja sama paket pekerjaan dengan WKI.',
+      bridge: 'Data kebutuhan alat sudah tercatat. Selain menyewakan alat, WKI juga dapat mengerjakan paket pekerjaan sebagai subkontraktor. Bagian ini menggali peluang tersebut.',
       questions: [
         {
-          num: '4.6', type: 'checkbox', required: true,
+          num: '4.8', type: 'checkbox', required: true,
           title: 'Paket pekerjaan apa yang bersedia Anda subkonkan ke WKI?',
           short: 'Paket pekerjaan untuk subkon',
           hint: 'Boleh pilih lebih dari satu.',
@@ -386,63 +500,18 @@ export const SURVEY: Survey = {
           ],
         },
         {
-          num: '4.7', type: 'radio',
-          showIf: (a) => !dicentang(a, '4.6', 'Tidak ada'),
+          num: '4.9', type: 'radio',
+          showIf: (a) => !dicentang(a, '4.8', 'Tidak ada'),
           title: 'Perkiraan nilai paket subkon yang bisa diberikan ke WKI pada 2027',
           short: 'Nilai paket subkon 2027',
           options: ['< Rp10 miliar', 'Rp10–50 miliar', '> Rp50–100 miliar', '> Rp100 miliar', 'Belum dapat diperkirakan'],
         },
         {
-          num: '4.8', type: 'radio',
-          showIf: (a) => !dicentang(a, '4.6', 'Tidak ada'),
+          num: '4.10', type: 'radio',
+          showIf: (a) => !dicentang(a, '4.8', 'Tidak ada'),
           title: 'Apakah Anda bersedia melibatkan WKI sejak tahap tender (dukungan penyusunan harga dan metode kerja)?',
           short: 'Melibatkan WKI sejak tender',
           options: ['Ya, untuk semua tender yang relevan', 'Ya, untuk tender tertentu', 'Tidak'],
-        },
-      ],
-    },
-
-    // ───────────────────────────────── Bagian 4C
-    {
-      id: 'alat-wki',
-      kicker: 'Bagian 4C',
-      title: 'Alat WKI yang sedang dipakai proyek',
-      desc: 'Rencana pelepasan dan kebutuhan jangka panjang alat WKI.',
-      questions: [
-        {
-          num: '4.9', type: 'radio', required: true,
-          title: 'Apakah proyek Anda saat ini memakai alat WKI?',
-          short: 'Memakai alat WKI',
-          options: ['Ya', 'Tidak'],
-        },
-        {
-          num: '4.10', type: 'repeater',
-          showIf: (a) => pilihan(a, '4.9') === 'Ya',
-          title: 'Untuk alat WKI yang sedang dipakai, kapan alat tersebut tidak lagi dibutuhkan proyek?',
-          short: 'Rencana pelepasan alat WKI',
-          tableName: 'Pelepasan alat WKI',
-          itemLabel: 'Alat',
-          initialRows: 1, maxRows: 15, minFilled: 0,
-          fields: [
-            { id: 'jenis', label: 'Jenis alat', type: 'text', placeholder: 'Contoh: Vibro roller 10 T', wide: true },
-            { id: 'jumlah', label: 'Jumlah unit', type: 'int', min: 1, max: 999, suffix: 'unit' },
-            { id: 'lepas', label: 'Perkiraan bulan alat bisa dilepas', type: 'month', years: [2026, 2027, 2028, 2029, 2030] },
-          ],
-        },
-        {
-          num: '4.11', type: 'text',
-          showIf: (a) => pilihan(a, '4.9') === 'Ya',
-          title: 'Adakah alat WKI yang masih Anda butuhkan jangka panjang (lebih dari 12 bulan)?',
-          short: 'Alat WKI yang dibutuhkan jangka panjang',
-          hint: 'Tulis jenis alat dan jumlah unitnya.',
-          placeholder: 'Contoh: 2 unit crawler crane 50 T',
-        },
-        {
-          num: '4.12', type: 'radio',
-          showIf: (a) => pilihan(a, '4.9') === 'Ya',
-          title: 'Apakah unit bisnis Anda berminat membeli alat yang akan dilepas WKI, dengan harga berbasis penilaian KJPP?',
-          short: 'Minat membeli alat yang dilepas',
-          options: [{ label: 'Ya', input: 'Sebutkan jenis alat' }, 'Mungkin, tergantung harga dan kondisi', 'Tidak'],
         },
       ],
     },
@@ -451,26 +520,35 @@ export const SURVEY: Survey = {
     {
       id: 'layanan',
       kicker: 'Bagian 5',
-      title: 'Layanan, SLA, dan penutup',
-      desc: 'Pengalaman dan harapan Bapak/Ibu terhadap layanan WKI.',
+      title: 'Layanan dan SLA',
+      desc: 'Harapan Bapak/Ibu terhadap layanan WKI.',
+      bridge: 'Hampir selesai! Bagian terakhir ini tentang standar layanan (SLA) yang Bapak/Ibu harapkan dari WKI.',
       questions: [
         {
           num: '5.1', type: 'radio', required: true,
-          title: 'Berdasarkan pengalaman, berapa lama rata-rata waktu dari laporan kerusakan sampai alat WKI berfungsi kembali?',
-          short: 'Waktu perbaikan rata-rata',
-          options: ['≤ 24 jam', '1–2 hari', '3–5 hari', '> 5 hari', 'Belum pernah memakai alat WKI'],
-        },
-        {
-          num: '5.2', type: 'radio', required: true,
           title: 'Berapa batas maksimum waktu perbaikan yang masih dapat diterima proyek?',
           short: 'Batas waktu perbaikan',
           options: ['≤ 24 jam', '1–2 hari', '3–5 hari'],
         },
         {
-          num: '5.3', type: 'radio', required: true,
+          num: '5.2', type: 'radio', required: true,
           title: 'Bila perbaikan melewati batas tersebut, apakah proyek membutuhkan alat pengganti dari WKI?',
           short: 'Kebutuhan alat pengganti',
           options: ['Ya, selalu', 'Ya, untuk alat kritis saja', 'Tidak perlu'],
+        },
+        {
+          num: '5.3', type: 'matrix', required: true,
+          showIf: pakaiAlatWki,
+          title: 'Bagaimana penilaian Anda terhadap layanan operator dan mekanik WKI?',
+          short: 'Layanan operator dan mekanik',
+          hint: 'Muncul karena proyek Anda saat ini memakai alat WKI.',
+          labels: ['Sangat buruk', 'Buruk', 'Cukup', 'Baik', 'Sangat baik'],
+          rows: [
+            'Keterampilan operator mengoperasikan alat',
+            'Kedisiplinan dan keselamatan kerja operator',
+            'Kecepatan respons mekanik saat alat rusak',
+            'Kualitas hasil perbaikan oleh mekanik',
+          ],
         },
         {
           num: '5.4', type: 'scale', required: true,
@@ -490,17 +568,22 @@ export const SURVEY: Survey = {
           short: 'Hal yang perlu diperbaiki',
           placeholder: 'Tulis jawaban Anda',
         },
+      ],
+    },
+
+    // ───────────────────────────────── Penutup
+    {
+      id: 'penutup',
+      kicker: 'Penutup',
+      title: 'Satu pertanyaan terakhir',
+      desc: 'Setelah ini Anda bisa memeriksa semua jawaban sebelum mengirim.',
+      questions: [
         {
-          num: '5.7', type: 'textarea',
-          title: 'Masukan lain terkait kebutuhan dan rencana investasi alat WKI',
-          short: 'Masukan lain',
-          placeholder: 'Opsional',
-        },
-        {
-          num: '5.8', type: 'radio',
-          title: 'Bersediakah Anda dihubungi untuk wawancara lanjutan?',
-          short: 'Bersedia diwawancara',
-          options: [{ label: 'Ya', input: 'Nomor telepon atau email' }, 'Tidak'],
+          num: '6.1', type: 'radio', required: true,
+          title: 'Jika dibutuhkan data tambahan berkaitan dengan kuesioner ini, apakah Anda bersedia dihubungi kembali?',
+          short: 'Bersedia dihubungi kembali',
+          hint: 'Kami akan menghubungi melalui alamat email yang Anda isi di Bagian 1.',
+          options: ['Ya, saya bersedia', 'Tidak'],
         },
       ],
     },
