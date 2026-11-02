@@ -14,22 +14,24 @@ dipasang di hosting Hostinger biasa tanpa Node.js.
   tombol ▲▼ di kanan bawah, dan bilah kemajuan di atas.
 - Layar pembuka dan pembuka tiap bagian bertata letak terbelah (teks + ilustrasi), dengan peta bagian
   dan kalimat penghubung antarbagian.
-- Animasi: transisi geser vertikal antarlayar, isi layar muncul berurutan, kedipan saat memilih,
+- Animasi: transisi geser vertikal antarlayar, isi layar muncul berurutan, riak dari titik sentuh dan efek tekan
+  pada semua tombol/pilihan, sorotan halus saat memilih,
   getar saat jawaban belum lengkap, warna latar berganti per bagian, konfeti saat terkirim.
   Semua gerak mati otomatis bila perangkat diatur "kurangi gerakan".
 - Semua pertanyaan wajib diisi. Email boleh dari domain apa pun (kantor, Gmail, Outlook, dll.).
 - Logika lompat: 3.1 → 3.2; 3.7 "hanya subkon" → lewati 3.8–3.9; 4.1 "Tidak" → lewati 4.2 dan 5.3;
   4.8 "Tidak ada" → lewati 4.9–4.10.
-- 2.6 Alat 1–3: pilih kelompok alat (kartu bergambar), lalu centang tipe alat dari kelompok itu saja.
-- 3.2 dan 3.6 berupa peringkat: setiap nilai 1–5 hanya boleh dipakai satu kali (3.6 = top 5 dari 7 aspek).
+- 2.6 minimal 3, maksimal 5 alat: pilih kelompok alat (kartu bergambar), lalu satu tipe alat dari kelompok itu saja.
+- 3.2 dan 3.6 berupa peringkat "ketuk sesuai urutan" (#1, #2, …) dengan tombol ▲▼ untuk menggeser; 3.6 = top 5 dari 7 aspek.
+  Di data tersimpan sebagai nilai 5 (#1) sampai 1 (#5).
 - Draf tersimpan otomatis di browser; ada halaman ringkasan dengan tombol "Ubah" per jawaban.
 - Halaman admin `/admin/` menampilkan jumlah respons dan tombol unduh CSV untuk Excel.
 
 ## Logo
 
-Letakkan file logo di `public/brand/` sebelum build (atau langsung di folder `brand/` di hosting):
-`logo-wki.png` (logo utama) dan `logo-danantara.png` (logo pendamping). Selama file belum ada,
-situs menampilkan ikon pengganti.
+Letakkan file logo di `public/brand/` lalu build ulang (`npm run serve` / `npm run build`). Nama file bebas:
+yang mengandung "wki" atau "waskita" dipakai sebagai logo utama, yang mengandung "danantara" sebagai logo
+pendamping (PNG/SVG/JPG/WEBP). Selama file belum ada, situs menampilkan ikon pengganti.
 
 ## Struktur
 

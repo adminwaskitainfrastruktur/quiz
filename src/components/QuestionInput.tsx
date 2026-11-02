@@ -2,6 +2,7 @@
 import type { Issue } from '../logic';
 import type { Answer, ChoiceAnswer, MultiAnswer, Question, RepeaterAnswer } from '../types';
 import { Allocation, CheckboxGroup, Matrix, RadioGroup, Repeater, Scale, TextInput } from './Inputs';
+import { Ranking } from './Ranking';
 
 export const domId = (num: string) => `q-${num.replace(/\./g, '-')}`;
 
@@ -19,6 +20,9 @@ export function QuestionInput({ q, value, onChange, issue, labelledBy }: {
     case 'scale':
       return <Scale q={q} value={value as number | undefined} onChange={onChange} labelledBy={labelledBy} />;
     case 'matrix':
+      if (q.unique) {
+        return <Ranking q={q} value={value as Record<string, number> | undefined} onChange={onChange} labelledBy={labelledBy} issue={issue} />;
+      }
       return <Matrix q={q} value={value as Record<string, number> | undefined} onChange={onChange} labelledBy={labelledBy} issue={issue} />;
     case 'allocation':
       return <Allocation q={q} value={value as Record<string, string> | undefined} onChange={onChange} labelledBy={labelledBy} />;

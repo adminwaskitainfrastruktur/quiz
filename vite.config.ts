@@ -1,5 +1,5 @@
 /// <reference types="vitest" />
-import { rmSync } from 'node:fs';
+import { readdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -17,7 +17,24 @@ const dropSecrets = (mode: string): Plugin => ({
   },
 });
 
+// Logo dicari otomatis di public/brand/ berdasarkan nama file (huruf besar/kecil & spasi bebas):
+//   mengandung "wki" atau "waskita" → logo utama; mengandung "danantara" → logo pendamping.
+function findLogo(pattern: RegExp, fallback: string) {
+  try {
+    const file = readdirSync(resolve(__dirname, 'public/brand'))
+      .filter((n) => /\.(png|svg|webp|jpe?g)$/i.test(n) && pattern.test(n))
+      .sort((a, b) => a.length - b.length)[0];
+    return file ? `brand/${encodeURIComponent(file)}` : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export default defineConfig(({ mode }) => ({
+  define: {
+    __LOGO_WKI__: JSON.stringify(findLogo(/wki|waskita/i, 'brand/logo-wki.png')),
+    __LOGO_DANANTARA__: JSON.stringify(findLogo(/danantara/i, 'brand/logo-danantara.png')),
+  },
   // './' agar hasil build bisa ditaruh di akar subdomain maupun subfolder.
   base: './',
   plugins: [react(), dropSecrets(mode)],

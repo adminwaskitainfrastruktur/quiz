@@ -97,6 +97,8 @@ export interface Field {
   optionsBy?: Record<string, string[]>;
   /** 'checks': teks petunjuk untuk isian "Lainnya"; bila diisi, opsi "Lainnya" ditambahkan. */
   other?: string;
+  /** 'checks': hanya boleh satu pilihan (nilai disimpan sebagai teks, bukan daftar). */
+  single?: boolean;
 }
 export interface RepeaterQ extends Base {
   type: 'repeater';

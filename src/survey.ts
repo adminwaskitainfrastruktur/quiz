@@ -227,9 +227,9 @@ export const SURVEY: Survey = {
           title: 'Untuk alat yang paling sering Anda sewa dari vendor eksternal, berapa tarif yang dibayar?',
           short: 'Tarif sewa vendor eksternal',
           tableName: 'Tarif vendor eksternal',
-          hint: 'Isi untuk 1–3 alat. Tarif ini dipakai sebagai pembanding harga WKI.',
+          hint: 'Isi minimal 3 dan maksimal 5 alat yang paling sering Anda sewa. Tarif ini dipakai sebagai pembanding harga WKI.',
           itemLabel: 'Alat',
-          initialRows: 1, maxRows: 3, minFilled: 1,
+          initialRows: 3, maxRows: 5, minFilled: 3,
           optOut: 'Proyek saya tidak menyewa alat dari vendor eksternal',
           example: 'a. Earthworks Equipment · b. Excavator · kapasitas 20 T · Rp45.000.000 per bulan · termasuk operator · tidak termasuk BBM',
           fields: [
@@ -239,7 +239,7 @@ export const SURVEY: Survey = {
               choices: KELOMPOK_ALAT.map(({ label, hint }) => ({ label, hint })),
             },
             {
-              id: 'tipe', type: 'checks', wide: true, column: 'Tipe alat',
+              id: 'tipe', type: 'checks', single: true, wide: true, column: 'Tipe alat',
               label: 'b. Tipe alat apa yang paling sering Anda sewa dari vendor eksternal?',
               dependsOn: 'kategori',
               optionsBy: Object.fromEntries(KELOMPOK_ALAT.map((k) => [k.label, k.types])),
@@ -282,7 +282,7 @@ export const SURVEY: Survey = {
           showIf: (a) => ['Kurang menerima', 'Tidak menerima'].includes(pilihan(a, '3.1')),
           title: 'Seberapa besar faktor berikut menjadi alasan keberatan Anda?',
           short: 'Alasan keberatan',
-          hint: 'Urutkan kelima faktor: 5 = alasan paling utama, 1 = alasan paling kecil. Setiap nilai hanya boleh dipakai satu kali.',
+          hint: 'Ketuk kelima faktor sesuai urutan, mulai dari alasan paling utama sampai paling kecil.',
           labels: ['Paling kecil', 'Kecil', 'Sedang', 'Besar', 'Paling utama'],
           rows: [
             'Aspek biaya (tarif yang kurang kompetitif dan margin sewa)',
@@ -327,7 +327,7 @@ export const SURVEY: Survey = {
           num: '3.6', type: 'matrix', unique: true, required: true,
           title: 'Pilih 5 aspek terpenting saat Anda memilih alat dan layanan WKI',
           short: 'Top 5 aspek terpenting',
-          hint: 'Beri nilai 5 untuk aspek paling penting sampai 1 untuk urutan kelima. Setiap nilai hanya boleh dipakai satu kali; dua aspek dibiarkan kosong.',
+          hint: 'Ketuk 5 aspek sesuai urutan, mulai dari yang paling penting. Dua aspek lainnya dibiarkan.',
           labels: ['Urutan ke-5', 'Urutan ke-4', 'Urutan ke-3', 'Urutan ke-2', 'Paling penting'],
           rows: [
             'Tarif sewa kompetitif',

@@ -1,7 +1,7 @@
 // Komponen isian untuk setiap tipe pertanyaan.
 import { useId } from 'react';
 import {
-  allocationTotal, emptyRepeater, fieldOptions, formatRupiah, Issue, LAINNYA, MONTH_NAMES, optInput, optLabel,
+  allocationTotal, emptyRepeater, fieldOptions, formatRupiah, Issue, LAINNYA, listOf, MONTH_NAMES, optInput, optLabel,
   otherKey, rowOf,
 } from '../logic';
 import { EquipmentArt } from './Art';
@@ -303,16 +303,18 @@ function FieldInput({ f, row, onChange, id, invalid }: {
       );
     case 'checks': {
       const opts = fieldOptions(f, row);
-      const list = Array.isArray(raw) ? raw : [];
+      const list = listOf(raw);
       if (!opts.length) {
         return <p className="hint-box" id={id}>Pilih kelompok alat di pertanyaan a terlebih dahulu.</p>;
       }
-      const toggle = (o: string) => onChange({ [f.id]: list.includes(o) ? list.filter((x) => x !== o) : [...list, o] });
+      const toggle = (o: string) => onChange({
+        [f.id]: f.single ? o : list.includes(o) ? list.filter((x) => x !== o) : [...list, o],
+      });
       return (
-        <div className="chips-pick" role="group" aria-labelledby={`${id}-l`} key={String(row[f.dependsOn!])}>
+        <div className="chips-pick" role={f.single ? 'radiogroup' : 'group'} aria-labelledby={`${id}-l`} key={String(row[f.dependsOn!])}>
           {opts.map((o, k) => (
-            <label key={o} className={`chip${list.includes(o) ? ' is-on' : ''}`} style={{ ['--i' as string]: k }}>
-              <input type="checkbox" checked={list.includes(o)} onChange={() => toggle(o)} />
+            <label key={o} className={`chip${f.single ? ' chip-single' : ''}${list.includes(o) ? ' is-on' : ''}`} style={{ ['--i' as string]: k }}>
+              <input type={f.single ? 'radio' : 'checkbox'} name={f.single ? id : undefined} checked={list.includes(o)} onChange={() => toggle(o)} />
               <span className="chip-mark" aria-hidden="true" />
               {o}
             </label>
@@ -396,7 +398,7 @@ export function Repeater({ q, value, onChange, labelledBy, issue }: {
     const next: Row = { ...row, ...patch };
     for (const g of q.fields) {
       if (g.dependsOn && g.dependsOn in patch && patch[g.dependsOn] !== row[g.dependsOn]) {
-        next[g.id] = [];
+        next[g.id] = g.single ? '' : [];
         next[otherKey(g)] = '';
       }
     }
@@ -423,7 +425,7 @@ export function Repeater({ q, value, onChange, labelledBy, issue }: {
                 <legend className="rcard-head">
                   <span>{q.itemLabel} {i + 1}</span>
                 </legend>
-                {ans.rows.length > 1 && (
+                {ans.rows.length > Math.max(1, q.minFilled) && (
                   <button type="button" className="link-btn rcard-remove"
                     onClick={() => onChange({ ...ans, rows: ans.rows.filter((_, j) => j !== i) })}>
                     Hapus

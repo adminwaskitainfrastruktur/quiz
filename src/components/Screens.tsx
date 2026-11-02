@@ -221,6 +221,11 @@ export function Review({ answers, onEdit, onSubmit, sending, onDownload }: {
 export function Done({ refId, onRestart }: { refId: string; onRestart: () => void }) {
   return (
     <div className="done">
+      <div className="logo-row logo-row-center reveal" style={{ '--d': 0 } as CSSProperties}>
+        <LogoWki className="logo-lg" bare />
+        <span className="logo-sep" aria-hidden="true" />
+        <LogoDanantara className="logo-lg" />
+      </div>
       <svg className="done-check" viewBox="0 0 96 96" aria-hidden="true">
         <circle cx="48" cy="48" r="44" />
         <path d="M28 50 l13 13 l27 -29" />

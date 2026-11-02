@@ -282,7 +282,7 @@ export default function App() {
           <LogoWki />
           <span className="brand-text"><b>{SURVEY.org}</b><small>{SURVEY.title}</small></span>
         </div>
-        {!inForm && <LogoDanantara className="topbar-partner" />}
+        <LogoDanantara className="topbar-partner" />
         {inForm && (
           <div className="topbar-meta" aria-live="polite">
             <span className="topbar-step" key={stepIndex}>

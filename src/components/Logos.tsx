@@ -1,12 +1,12 @@
-// Logo perusahaan. File gambarnya diletakkan di public/brand/ (ikut terunggah ke hosting):
-//   logo-wki.png        — logo utama PT Waskita Karya Infrastruktur
-//   logo-danantara.png  — logo pendamping Danantara Indonesia
+// Logo perusahaan. File gambarnya diletakkan di public/brand/ (ikut terunggah ke hosting).
+// Nama file bebas: yang mengandung "wki"/"waskita" = logo utama PT Waskita Karya Infrastruktur,
+// yang mengandung "danantara" = logo pendamping Danantara Indonesia (dicari saat build, lihat vite.config.ts).
 // Bila file belum ada, ditampilkan ikon pengganti agar tampilan tidak rusak.
 import { useState } from 'react';
 import { Icon } from './Icon';
 
-export const LOGO_WKI = 'brand/logo-wki.png';
-export const LOGO_DANANTARA = 'brand/logo-danantara.png';
+export const LOGO_WKI = __LOGO_WKI__;
+export const LOGO_DANANTARA = __LOGO_DANANTARA__;
 
 function Img({ src, alt, className, fallback }: { src: string; alt: string; className: string; fallback?: JSX.Element }) {
   const [failed, setFailed] = useState(false);

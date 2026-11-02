@@ -44,6 +44,10 @@ const blank = (v: unknown) =>
 export const otherKey = (f: Field) => `${f.id}__lainnya`;
 export const LAINNYA = 'Lainnya';
 
+/** Nilai kolom 'checks' sebagai daftar (pilihan tunggal disimpan sebagai teks). */
+export const listOf = (v: string | string[] | undefined): string[] =>
+  Array.isArray(v) ? v : typeof v === 'string' && v ? [v] : [];
+
 /** Opsi kolom 'checks' sesuai jawaban kolom induknya (kosong bila induk belum dipilih). */
 export function fieldOptions(f: Field, r: Row): string[] {
   if (!f.dependsOn || !f.optionsBy) return f.options ?? [];
@@ -65,7 +69,7 @@ function extraIssue(opts: Option[], chosen: string[], extra: Record<string, stri
 export function fieldIssue(f: Field, v: string | string[] | undefined, r: Row = {}): string | null {
   if (blank(v)) return f.optional ? null : 'wajib';
   if (f.type === 'checks') {
-    const list = Array.isArray(v) ? v : [];
+    const list = listOf(v);
     if (list.includes(LAINNYA) && blank(r[otherKey(f)])) return 'isi tipe lainnya';
     return null;
   }
@@ -186,8 +190,8 @@ function uniqueIssue(q: MatrixQ, ans: Record<string, number>): Issue | null {
     : undefined;
   return {
     message: used.length === 0
-      ? `Beri nilai 1–${q.labels.length}, masing-masing satu kali.`
-      : `Nilai yang belum dipakai: ${unusedVals.join(', ')}.`,
+      ? `Urutkan ${q.labels.length} pilihan dengan mengetuknya sesuai urutan.`
+      : `Masih kurang ${unusedVals.length} urutan lagi (baru ${used.length} dari ${q.labels.length}).`,
     rows,
   };
 }
@@ -215,9 +219,9 @@ function withExtra(label: string, opts: Option[], extra?: Record<string, string>
 
 export function fieldText(f: Field, v: string | string[] | undefined, r: Row = {}, sep = ', '): string {
   if (blank(v)) return '';
-  if (Array.isArray(v)) {
+  if (f.type === 'checks' || Array.isArray(v)) {
     const other = str(r[otherKey(f)])?.trim();
-    return v.map((x) => (x === LAINNYA && other ? `${LAINNYA}: ${other}` : x)).join(sep);
+    return listOf(v).map((x) => (x === LAINNYA && other ? `${LAINNYA}: ${other}` : x)).join(sep);
   }
   switch (f.type) {
     case 'currency': return `Rp${formatRupiah(v!)}`;
@@ -259,7 +263,7 @@ export function answerText(q: Question, a: Answers): string | string[] | null {
           .map((r, i) => ({ label: rowOf(r).label, v: ans[i] }))
           .filter((x) => typeof x.v === 'number')
           .sort((x, y) => y.v - x.v)
-          .map((x) => `${x.v} — ${x.label}`);
+          .map((x) => `#${q.labels.length - x.v + 1} ${x.label}`);
       }
       return q.rows.map((r, i) => `${rowOf(r).label}: ${typeof ans[i] === 'number' ? `${ans[i]} — ${q.labels[ans[i] - 1]}` : '–'}`);
     }
@@ -330,7 +334,7 @@ function flatten(q: Question, a: Answers, out: Record<string, Cell>, tables: Pay
           const col = f.column ?? f.label;
           if (blank(x)) return [col, null];
           if (f.type === 'int' || f.type === 'currency') return [col, Number(x)];
-          if (Array.isArray(x)) return [col, fieldText(f, x, r, '; ')];
+          if (f.type === 'checks' || Array.isArray(x)) return [col, fieldText(f, x, r, '; ')];
           return [col, x as string];
         })),
       );

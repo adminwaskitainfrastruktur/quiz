@@ -73,10 +73,13 @@ describe('validasi', () => {
   it('tabel isian: baris setengah terisi ditolak, opt-out diterima', () => {
     const half: Answers = { '2.6': { rows: [{ kategori: 'Earthworks Equipment' }] } };
     expect(validate(Q('2.6'), half)?.cells?.[0]).toEqual(['tipe', 'kapasitas', 'tarif', 'satuan', 'operator', 'bbm']);
-    expect(validate(Q('2.6'), { '2.6': { rows: [{}] } })?.message).toMatch(/minimal 1/);
+    expect(validate(Q('2.6'), { '2.6': { rows: [{}, {}, {}] } })?.message).toMatch(/minimal 3/);
     expect(validate(Q('2.6'), { '2.6': { rows: [{}], optOut: true } })).toBeNull();
-    const full = { kategori: 'Earthworks Equipment', tipe: ['Excavator'], kapasitas: '20 T', tarif: '45000000', satuan: 'per bulan', operator: 'Ya', bbm: 'Tidak' };
-    expect(validate(Q('2.6'), { '2.6': { rows: [full, {}] } })).toBeNull();
+    const full = { kategori: 'Earthworks Equipment', tipe: 'Excavator', kapasitas: '20 T', tarif: '45000000', satuan: 'per bulan', operator: 'Ya', bbm: 'Tidak' };
+    expect(validate(Q('2.6'), { '2.6': { rows: [full, {}, {}] } })?.message).toMatch(/minimal 3/);
+    expect(validate(Q('2.6'), { '2.6': { rows: [full, full, full] } })).toBeNull();
+    expect(validate(Q('2.6'), { '2.6': { rows: [full, full, full, full, full] } })).toBeNull();
+    expect((Q('2.6') as RepeaterQ).maxRows).toBe(5);
   });
 
   it('angka di luar batas ditolak', () => {
@@ -89,7 +92,7 @@ describe('matriks peringkat (nilai unik)', () => {
   const tidak: Answers = { '3.1': { value: 'Tidak menerima' } };
 
   it('3.2: kelima faktor harus diberi nilai 1–5 yang berbeda', () => {
-    expect(validate(Q('3.2'), { ...tidak, '3.2': { 0: 5, 1: 4, 2: 3 } })?.message).toMatch(/belum dipakai: 1, 2/);
+    expect(validate(Q('3.2'), { ...tidak, '3.2': { 0: 5, 1: 4, 2: 3 } })?.message).toMatch(/kurang 2 urutan/);
     expect(validate(Q('3.2'), { ...tidak, '3.2': { 0: 5, 1: 5, 2: 3, 3: 2, 4: 1 } })?.message).toMatch(/satu kali/);
     expect(validate(Q('3.2'), { ...tidak, '3.2': { 0: 5, 1: 4, 2: 3, 3: 2, 4: 1 } })).toBeNull();
   });
@@ -101,11 +104,11 @@ describe('matriks peringkat (nilai unik)', () => {
   });
 
   it('3.6: top 5 dari 7 aspek, dua aspek boleh kosong', () => {
-    expect(validate(Q('3.6'), { '3.6': { 0: 5, 1: 4, 2: 3, 3: 2 } })?.message).toMatch(/belum dipakai: 1/);
+    expect(validate(Q('3.6'), { '3.6': { 0: 5, 1: 4, 2: 3, 3: 2 } })?.message).toMatch(/kurang 1 urutan/);
     expect(validate(Q('3.6'), { '3.6': { 0: 5, 1: 4, 2: 3, 3: 2, 6: 1 } })).toBeNull();
     expect(answerText(Q('3.6'), { '3.6': { 6: 1, 0: 5 } })).toEqual([
-      '5 — Tarif sewa kompetitif',
-      '1 — Ketersediaan operator dan mekanik',
+      '#1 Tarif sewa kompetitif',
+      '#5 Ketersediaan operator dan mekanik',
     ]);
   });
 });
@@ -160,15 +163,20 @@ describe('percabangan 2.6 (kelompok → tipe alat)', () => {
     expect(fieldOptions(f, { kategori: 'Earthworks Equipment' })).not.toContain('Dumptruck');
   });
 
+  it('2.6b hanya satu pilihan per alat', () => {
+    expect(f.single).toBe(true);
+  });
+
   it('tipe "Lainnya" wajib disebutkan dan ikut terkirim', () => {
-    const row = { kategori: 'Others Equipment', tipe: ['Pompa', 'Lainnya'], kapasitas: '4 inch', tarif: '1000000', satuan: 'per hari', operator: 'Tidak', bbm: 'Tidak' };
-    expect(validate(Q('2.6'), { '2.6': { rows: [row] } })?.cells?.[0]).toEqual(['tipe']);
-    const ok: Answers = { '2.6': { rows: [{ ...row, tipe__lainnya: 'Vibrator beton' }] } };
+    const row = { kategori: 'Others Equipment', tipe: 'Lainnya', kapasitas: '4 inch', tarif: '1000000', satuan: 'per hari', operator: 'Tidak', bbm: 'Tidak' };
+    expect(validate(Q('2.6'), { '2.6': { rows: [row, row, row] } })?.cells?.[0]).toEqual(['tipe']);
+    const done = { ...row, tipe__lainnya: 'Vibrator beton' };
+    const ok: Answers = { '2.6': { rows: [done, done, done] } };
     expect(validate(Q('2.6'), ok)).toBeNull();
     const p = buildPayload(SURVEY, ok, { id: 'x', startedAt: null });
     expect(p.tables['2.6 Tarif vendor eksternal'][0]).toMatchObject({
       'Kelompok alat': 'Others Equipment',
-      'Tipe alat': 'Pompa; Lainnya: Vibrator beton',
+      'Tipe alat': 'Lainnya: Vibrator beton',
       'Kapasitas/spesifikasi': '4 inch',
     });
   });

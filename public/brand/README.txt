@@ -1,6 +1,8 @@
-Letakkan file logo di folder ini (format PNG, latar transparan lebih baik):
+Letakkan file logo di folder ini (PNG/SVG/JPG/WEBP, latar transparan lebih baik).
+Nama file bebas, logo dikenali dari namanya saat build:
 
-  logo-wki.png        logo utama PT Waskita Karya Infrastruktur
-  logo-danantara.png  logo pendamping Danantara Indonesia
+  nama mengandung "wki" atau "waskita"  → logo utama PT Waskita Karya Infrastruktur
+  nama mengandung "danantara"           → logo pendamping Danantara Indonesia
 
-Nama file harus persis seperti di atas. Ukuran yang disarankan: tinggi minimal 160 px.
+Contoh: "logo wki.png", "Logo-Danantara.png". Setelah menambah/mengganti logo,
+jalankan ulang `npm run serve` (atau `npm run build`) agar logo ikut terpasang.
