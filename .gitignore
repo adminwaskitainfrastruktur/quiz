@@ -1,0 +1,6 @@
+node_modules/
+dist/
+*.zip
+# Kredensial database — dibuat langsung di server, jangan di-commit
+public/api/config.php
+.env*
