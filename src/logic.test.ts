@@ -103,10 +103,15 @@ describe('matriks peringkat (nilai unik)', () => {
     expect(String(q.rows[q.rows.length - 1])).toMatch(/^Proses administrasi/);
   });
 
-  it('3.6: top 5 dari 7 aspek, dua aspek boleh kosong', () => {
-    expect(validate(Q('3.6'), { '3.6': { 0: 5, 1: 4, 2: 3, 3: 2 } })?.message).toMatch(/kurang 1 urutan/);
-    expect(validate(Q('3.6'), { '3.6': { 0: 5, 1: 4, 2: 3, 3: 2, 6: 1 } })).toBeNull();
-    expect(answerText(Q('3.6'), { '3.6': { 6: 1, 0: 5 } })).toEqual([
+  it('3.6: lima aspek (dua pasang digabung, mobilisasi dihapus) diurutkan semuanya', () => {
+    const q = Q('3.6');
+    if (q.type !== 'matrix') throw new Error('tipe salah');
+    expect(q.rows).toHaveLength(5);
+    expect(String(q.rows[2])).toMatch(/Kondisi fisik.*kecepatan perbaikan/);
+    expect(String(q.rows[3])).toMatch(/Fleksibilitas kontrak.*kemudahan administrasi/);
+    expect(validate(q, { '3.6': { 0: 5, 1: 4, 2: 3, 3: 2 } })?.message).toMatch(/kurang 1 urutan/);
+    expect(validate(q, { '3.6': { 0: 5, 1: 4, 2: 3, 3: 2, 4: 1 } })).toBeNull();
+    expect(answerText(q, { '3.6': { 4: 1, 0: 5 } })).toEqual([
       '#1 Tarif sewa kompetitif',
       '#5 Ketersediaan operator dan mekanik',
     ]);

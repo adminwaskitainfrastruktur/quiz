@@ -142,6 +142,7 @@ $stats = null;
 if ($authed) {
     try {
         $pdo = db();
+        ensure_schema($pdo);
         $stats = [
             'total' => (int) $pdo->query('SELECT COUNT(*) FROM responses')->fetchColumn(),
             'today' => (int) $pdo->query('SELECT COUNT(*) FROM responses WHERE DATE(submitted_at) = CURDATE()')->fetchColumn(),
@@ -152,7 +153,8 @@ if ($authed) {
         ];
     } catch (Throwable $ex) {
         error_log('[kuesioner-admin] ' . $ex->getMessage());
-        $error = 'Tidak dapat terhubung ke database. Periksa pengaturan di api/config.php.';
+        $error = 'Tidak dapat terhubung ke database. Periksa pengaturan di api/config.php.'
+            . (is_local_request() ? ' Penyebab: ' . explain_db_error($ex) : '');
     }
 }
 ?><!doctype html>

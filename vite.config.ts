@@ -17,27 +17,48 @@ const dropSecrets = (mode: string): Plugin => ({
   },
 });
 
-// Logo dicari otomatis di public/brand/ berdasarkan nama file (huruf besar/kecil & spasi bebas):
+// Logo dicari otomatis di public/brand/ (termasuk subfolder) berdasarkan nama file:
 //   mengandung "wki" atau "waskita" → logo utama; mengandung "danantara" → logo pendamping.
-function findLogo(pattern: RegExp, fallback: string) {
+// Bila tidak ada nama yang cocok tetapi hanya ada satu gambar lain selain Danantara, gambar itu dipakai
+// sebagai logo utama. Hasil pencarian dicetak di terminal saat build/dev.
+const IMG = /\.(png|svg|webp|jpe?g|gif|avif)$/i;
+function listImages(dir: string, prefix = ''): string[] {
   try {
-    const file = readdirSync(resolve(__dirname, 'public/brand'))
-      .filter((n) => /\.(png|svg|webp|jpe?g)$/i.test(n) && pattern.test(n))
-      .sort((a, b) => a.length - b.length)[0];
-    return file ? `brand/${encodeURIComponent(file)}` : fallback;
+    return readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
+      d.isDirectory() ? listImages(resolve(dir, d.name), `${prefix}${d.name}/`) : IMG.test(d.name) ? [`${prefix}${d.name}`] : []);
   } catch {
-    return fallback;
+    return [];
   }
 }
+const toUrl = (rel: string) => `brand/${rel.split('/').map(encodeURIComponent).join('/')}`;
+function findLogos() {
+  const all = listImages(resolve(__dirname, 'public/brand'));
+  const pick = (re: RegExp) => all.filter((f) => re.test(f)).sort((a, b) => a.length - b.length)[0];
+  const danantara = pick(/danantara/i);
+  let wki = pick(/wki|waskita/i);
+  const rest = all.filter((f) => f !== danantara);
+  if (!wki && rest.length === 1) wki = rest[0];
+  return { all, wki, danantara };
+}
+const LOGOS = findLogos();
+const logoReport = (): Plugin => ({
+  name: 'logo-report',
+  buildStart() {
+    const show = (f?: string) => (f ? `public/brand/${f}` : 'TIDAK DITEMUKAN');
+    console.log(`\n[logo] Isi public/brand: ${LOGOS.all.length ? LOGOS.all.join(', ') : '(tidak ada gambar)'}`);
+    console.log(`[logo] Logo utama (WKI): ${show(LOGOS.wki)}`);
+    console.log(`[logo] Logo pendamping (Danantara): ${show(LOGOS.danantara)}\n`);
+  },
+});
 
 export default defineConfig(({ mode }) => ({
   define: {
-    __LOGO_WKI__: JSON.stringify(findLogo(/wki|waskita/i, 'brand/logo-wki.png')),
-    __LOGO_DANANTARA__: JSON.stringify(findLogo(/danantara/i, 'brand/logo-danantara.png')),
+    __LOGO_WKI__: JSON.stringify(LOGOS.wki ? toUrl(LOGOS.wki) : ''),
+    __LOGO_DANANTARA__: JSON.stringify(LOGOS.danantara ? toUrl(LOGOS.danantara) : ''),
   },
   // './' agar hasil build bisa ditaruh di akar subdomain maupun subfolder.
   base: './',
-  plugins: [react(), dropSecrets(mode)],
+  plugins: [react(), dropSecrets(mode), logoReport()],
   server: {
     port: 8080,
     strictPort: true,

@@ -10,7 +10,7 @@ export const LOGO_DANANTARA = __LOGO_DANANTARA__;
 
 function Img({ src, alt, className, fallback }: { src: string; alt: string; className: string; fallback?: JSX.Element }) {
   const [failed, setFailed] = useState(false);
-  if (failed) return fallback ?? null;
+  if (failed || !src) return fallback ?? null;
   return <img src={src} alt={alt} className={className} onError={() => setFailed(true)} decoding="async" />;
 }
 

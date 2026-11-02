@@ -107,6 +107,7 @@ $raw = isset($data['raw']) && is_array($data['raw']) ? json_encode($data['raw'],
 
 try {
     $pdo = db();
+    ensure_schema($pdo);
     $pdo->beginTransaction();
     $stmt = $pdo->prepare(
         'INSERT IGNORE INTO responses
@@ -139,5 +140,7 @@ try {
         $pdo->rollBack();
     }
     error_log('[kuesioner] ' . $e->getMessage());
-    reply(500, ['ok' => false, 'error' => 'Server gagal menyimpan jawaban.']);
+    // Di komputer sendiri (localhost/Laragon) tampilkan penyebabnya; di hosting cukup pesan umum.
+    $detail = is_local_request() ? ' Penyebab: ' . explain_db_error($e) . ' Cek juga api/health.php.' : '';
+    reply(500, ['ok' => false, 'error' => 'Server gagal menyimpan jawaban.' . $detail]);
 }
